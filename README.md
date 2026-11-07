@@ -60,7 +60,7 @@ The second command opens a setup page in your browser and takes a few minutes:
 1. **Pick a goal.** Each comes with starting categories you can rename, rewrite and extend.
 2. **Describe your work** in a few sentences and point it at your project folders, or paste one line into Claude Code, Codex or any other AI agent and let it fill this in from your repositories ([how it works](AGENT_SETUP.md)).
 3. **Connect a model** through OpenRouter or TypeSafe, or run one on your own Mac. Each option shows its monthly cost and has a step-by-step guide, and a test request runs before anything starts.
-4. **Allow Screen Recording.** The page opens the right settings pane and shows the first minutes being labelled.
+4. **Turn on timelens** when macOS asks to let it record the screen. The page shows the first minutes being labelled as they arrive.
 5. **See your report** drawn with your own categories before your first real day.
 
 <table>
@@ -215,6 +215,7 @@ onboarding.html   the setup page
 presets.toml      the goals offered during setup
 AGENT_SETUP.md    what an AI agent follows to fill in your context
 bin/timelens      the command (creates its Python environment on first run)
+launcher/         timelens.app, a signed 40-line launcher so macOS lists "timelens" in Privacy settings
 eval.py           collect real screenshots, label them blind, compare models
 docs/             README images and the script that renders them from demo data
 ```

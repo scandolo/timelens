@@ -46,9 +46,12 @@ def presets():
     return tomllib.loads((ROOT / "presets.toml").read_text())["preset"]
 
 
+LAUNCHER = HOME / "timelens.app/Contents/MacOS/timelens"
+
+
 def python_path():
-    """The binary macOS must allow under Screen Recording: the real file behind this environment's python."""
-    return os.path.realpath(sys.executable)
+    """What macOS lists under Screen Recording: "timelens" with the app, else the real file behind this python."""
+    return "timelens" if LAUNCHER.exists() else os.path.realpath(sys.executable)
 
 
 def folders(dirs):
@@ -120,8 +123,10 @@ def install_agents(report_time):
     AGENTS.mkdir(parents=True, exist_ok=True)
     py, script = sys.executable, str(HOME / "timelens.py")  # the venv this setup runs in, the stable install path
     hour, minute = (int(x) for x in report_time.split(":"))
+    # with timelens.app (Homebrew installs it) macOS shows "timelens" in Privacy settings instead of python3.13
+    sampler = [str(LAUNCHER), "run"] if LAUNCHER.exists() else [py, script, "run"]
     jobs = {
-        "com.timelens.sampler": {"ProgramArguments": [py, script, "run"], "RunAtLoad": True, "KeepAlive": True},
+        "com.timelens.sampler": {"ProgramArguments": sampler, "RunAtLoad": True, "KeepAlive": True},
         "com.timelens.report": {"ProgramArguments": [py, script, "report", "--notify"],
                                 "StartCalendarInterval": {"Hour": hour, "Minute": minute}},
     }

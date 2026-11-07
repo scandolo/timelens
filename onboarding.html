@@ -197,11 +197,15 @@ const steps = [
     ok: () => true },
   { // 6. permissions
     render: () => `<h1>One permission</h1><p class="lead">macOS needs to let timelens see the front window.</p>
-      <div class="card"><ol class="todo">
+      <div class="card"><ol class="todo">${installed?.python === 'timelens' ? `
+        <li><span>macOS will ask: <i>“timelens” would like to record this computer's screen</i>. Click <b>Open System Settings</b>.
+          No prompt? <button onclick="api('/api/open-settings',{})">Open it yourself</button></span></li>
+        <li><span>Turn on <b>timelens</b>.</span></li>
+        <li><span><button onclick="api('/api/restart',{});this.textContent='Restarted'">Restart timelens</button> so the change takes effect.</span></li>` : `
         <li><span><button onclick="api('/api/open-settings',{})">Open Screen &amp; System Audio Recording</button></span></li>
         <li><span>Click <b>+</b>, press <b>⌘⇧G</b>, paste this path and click <b>Open</b>:<br><code id="py">${esc(installed?.python)}</code>
           <button style="margin-top:6px" onclick="navigator.clipboard.writeText($('#py').textContent);this.textContent='Copied'">Copy path</button></span></li>
-        <li><span>Turn its switch on, then <button onclick="api('/api/restart',{});this.textContent='Restarted'">restart timelens</button></span></li></ol></div>
+        <li><span>Turn its switch on, then <button onclick="api('/api/restart',{});this.textContent='Restarted'">restart timelens</button></span></li>`}</ol></div>
       <div id="live" class="hint">${S.dry_run ? 'Preview mode: nothing is running, so there are no minutes to show.' : 'Waiting for the first minute…'}</div>` + nav('See my report'),
     ok: () => true, enter: () => { if (!S.dry_run) { poll = setInterval(live, 5000); live(); } } },
   { // 7. preview
