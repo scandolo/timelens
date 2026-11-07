@@ -38,6 +38,9 @@ button.primary{background:var(--accent);border-color:var(--accent);color:#fff;fo
 button.x{padding:6px 0;border:0;background:none;color:var(--muted);font-size:18px;line-height:1}button.x:hover{color:var(--bad)}
 button.q{width:24px;height:24px;padding:0;border-radius:50%;font-size:13px;font-weight:700;color:var(--muted);display:grid;place-items:center}
 button.add{display:flex;gap:8px;align-items:center;margin-top:4px}
+.hello{max-width:560px;margin:48px auto 0;text-align:center}.hello h1{font-size:34px;line-height:1.15;margin-bottom:12px}.hello p.lead{font-size:16px}
+.hello ul{list-style:none;padding:0;margin:28px auto;width:fit-content;text-align:left}.hello li{display:flex;gap:14px;align-items:center;padding:10px 0}.hello li span{color:var(--muted)}
+.hello button.primary{padding:12px 28px;font-size:16px}
 .nav{display:flex;justify-content:space-between;margin-top:32px}
 .hint{font-size:13px;color:var(--muted)}.ok{color:var(--good)}.err{color:var(--bad)}.warn{color:var(--warn)}
 .tabs{display:inline-flex;background:var(--track);border-radius:12px;padding:4px;gap:4px;margin-bottom:12px}
@@ -119,7 +122,7 @@ const GUIDES = {
     note: 'Experimental: this path hasn\'t been tested end to end yet.'},
 };
 
-let S, step = 0, tested = null, poll, agentPoll, contextTab = 'self', agentFilled = false, previewTab = 'day', previewUrls = null, installed = null;
+let S, step = 0, welcome = false, tested = null, poll, agentPoll, contextTab = 'self', agentFilled = false, previewTab = 'day', previewUrls = null, installed = null;
 const C = {preset: null, categories: [], about: '', dirs: [], known: {}, ignore: [], provider: 'openrouter', model: 'perplexity/pplx-decider-v1.2', key: '',
            screenshots: true, report_time: '19:00', batch_window: '12:30-14:00'};
 const KINDS = [['focus', 'Focus'], ['neutral', 'Neutral'], ['distraction', 'Distraction']];
@@ -128,7 +131,7 @@ const monthly = m => m.price ? `≈ $${(m.tokens * 480 * 22 * m.price / 1e6).toF
 function showExample(i) { C.categories[i].showEx = true; draw(); document.querySelector(`[data-ex="${i}"]`).focus() }
 const label = n => n.replace(/_/g, ' ').replace(/^./, c => c.toUpperCase());
 const slug = v => v.trim().toLowerCase().replace(/[^a-z0-9]+/g, '_').replace(/^_|_$/g, '');
-const nav = (next = 'Continue', action = 'go(1)') => `<div class="nav"><button ${step ? '' : 'disabled'} onclick="go(-1)">Back</button><button class="primary" id="next" onclick="${action}">${next}</button></div>`;
+const nav = (next = 'Continue', action = 'go(1)') => `<div class="nav"><button ${step || welcome !== false ? '' : 'disabled'} onclick="go(-1)">Back</button><button class="primary" id="next" onclick="${action}">${next}</button></div>`;
 
 const steps = [
   { // 1. goal
@@ -303,7 +306,15 @@ async function live() {
   $('#live').innerHTML = (s.needs_permission ? '<p class="warn">Screenshots are still blocked. Finish the steps above, then restart timelens.</p>' : '')
     + (rows ? `<b>Last few minutes</b><table class="live">${rows}</table>` : 'Waiting for the first minute…');
 }
+const hello = () => `<div class="hello"><h1>Every evening,<br>the honest version of your day.</h1>
+  <p class="lead">timelens looks at your screen once a minute and files that minute under categories you choose. Each evening you get a short report of where the hours went.</p>
+  <ul><li><span class="tile">${icon('target')}</span><div><b>Pick what to track</b><br><span>Start from a goal, then make the categories yours.</span></div></li>
+  <li><span class="tile">${icon('key')}</span><div><b>Connect a model</b><br><span>About $0.50 a month, or free and fully on this Mac.</span></div></li>
+  <li><span class="tile">${icon('eye')}</span><div><b>Let it see your screen</b><br><span>Each screenshot is sent once and never stored.</span></div></li></ul>
+  <button class="primary" onclick="welcome = null; draw()">Start setup</button><p class="hint">Takes about three minutes.</p></div>`;
 function draw() {
+  $('#dots').style.visibility = welcome ? 'hidden' : '';
+  if (welcome) { $('.wrap').classList.remove('wide'); $('#view').innerHTML = hello(); return }
   $('#dots').innerHTML = steps.map((_, i) => `<i class="${i <= step ? 'on' : ''}"></i>`).join('');
   const s = steps[step];
   $('.wrap').classList.toggle('wide', !!s.wide);
@@ -313,9 +324,10 @@ function draw() {
   document.oninput = e => { if (e.target.matches('textarea.field, textarea.ghost')) fitOne(e.target); if (n) n.disabled = !steps[step].ok(); };
   if (n) n.disabled = !s.ok();
 }
-function go(d) { if (step === 2 && $('#dirs')) scan(); clearInterval(agentPoll); clearInterval(poll); step += d; draw(); steps[step].enter?.() }
+function go(d) {
+  if (!step && d < 0) { welcome = true; return draw() } if (step === 2 && $('#dirs')) scan(); clearInterval(agentPoll); clearInterval(poll); step += d; draw(); steps[step].enter?.() }
 api('/api/state').then(s => {
-  S = s; if (S.existing) pick('existing');
+  S = s; if (S.existing) pick('existing'); welcome = !S.existing && !location.hash;
   const h = new URLSearchParams(location.hash.slice(1));  // #preset=clients&step=1&tab=agent opens a given screen (used for docs screenshots)
   if (h.get('preset')) { pick(h.get('preset')); step = +(h.get('step') || 0); contextTab = h.get('tab') || 'self'; if (h.get('provider')) setProvider(h.get('provider')); }
   draw(); steps[step].enter?.();
