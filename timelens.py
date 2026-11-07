@@ -125,9 +125,10 @@ def screenshot(window_id):
 
 def projects(cfg=None):
     cfg, p = cfg or CFG, {}
+    ignore = set(cfg["projects"].get("ignore", []))
     for d in cfg["projects"]["dirs"]:
         for sub in sorted(Path(d).expanduser().glob("*/")):
-            if not sub.name.startswith("."):
+            if not sub.name.startswith(".") and sub.name not in ignore:
                 p[sub.name] = f"The project or repository called {sub.name}."
     p.update(cfg["projects"].get("known", {}))
     p["new_project"] = "A specific project, client or company that is not in this list."

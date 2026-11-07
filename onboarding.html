@@ -47,7 +47,8 @@ button.add{display:flex;gap:8px;align-items:center;margin-top:4px}
 .prompt span{flex:1;word-break:break-word}
 .pulse{display:inline-block;width:8px;height:8px;border-radius:50%;background:var(--accent);margin-right:8px;animation:p 1.4s infinite}@keyframes p{50%{opacity:.25}}
 .banner{display:flex;gap:10px;align-items:center;background:var(--accent-soft);border-radius:10px;padding:10px 14px;margin:0 0 12px;font-size:14px}
-.proj{display:grid;grid-template-columns:24px 220px 1fr;gap:10px;align-items:center;padding:6px 0}.proj+.proj{border-top:1px solid var(--border)}
+.proj{display:grid;grid-template-columns:24px 200px 1fr 20px;gap:10px;align-items:start;padding:8px 0}.proj code{padding-top:3px}.ghost.pdesc{font-size:14px}.proj+.proj{border-top:1px solid var(--border)}
+a{color:var(--accent)}
 code{font:13px ui-monospace,monospace;background:var(--track);padding:2px 6px;border-radius:5px;word-break:break-all}
 .proj code{background:none;padding:0}
 .toggle{display:flex;gap:12px;align-items:flex-start;cursor:pointer}.toggle input{width:auto;margin-top:4px}
@@ -57,7 +58,7 @@ ol.todo li::before{content:counter(s);flex:none;width:24px;height:24px;border-ra
 .frame{width:100%;height:760px;border:1px solid var(--border);border-radius:14px;background:var(--bg)}
 .modal{position:fixed;inset:0;background:rgba(0,0,0,.45);display:grid;place-items:center;padding:20px;z-index:9}
 .modal .card{max-width:520px;width:100%;padding:24px;margin:0}.modal ol{padding-left:20px;margin:12px 0}.modal li{margin:8px 0}
-@media (max-width:700px){.cat{grid-template-columns:36px 1fr 20px}.cat>.kw{grid-column:2;grid-row:2}.proj{grid-template-columns:24px 1fr}.proj input{grid-column:2}.opt .aud{display:block;margin:0}}
+@media (max-width:700px){.cat{grid-template-columns:36px 1fr 20px}.cat>.kw{grid-column:2;grid-row:2}.proj{grid-template-columns:24px 1fr 20px}.proj .pdesc{grid-column:2}.opt .aud{display:block;margin:0}}
 </style></head><body><div class="wrap">
 <header><img src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%2314161a'/%3E%3Cg transform='translate(9 28)'%3E%3Crect width='10' height='8' rx='2' fill='%233b6fe0'/%3E%3Crect x='12' width='6' height='8' rx='2' fill='%232fa58a'/%3E%3Crect x='20' width='4' height='8' rx='2' fill='%23e0566b'/%3E%3Crect x='26' width='9' height='8' rx='2' fill='%236c8ff0'/%3E%3Crect x='37' width='9' height='8' rx='2' fill='%23e0a020'/%3E%3C/g%3E%3Ccircle cx='35' cy='32' r='13' fill='none' stroke='white' stroke-width='3.5'/%3E%3Cline x1='44.5' y1='41.5' x2='53' y2='50' stroke='white' stroke-width='4' stroke-linecap='round'/%3E%3C/svg%3E" alt=""><b>timelens</b><div class="steps" id="dots"></div></header>
 <main id="view"></main><div id="modal"></div>
@@ -119,7 +120,7 @@ const GUIDES = {
 };
 
 let S, step = 0, tested = null, poll, agentPoll, contextTab = 'self', agentFilled = false, previewTab = 'day', previewUrls = null, installed = null;
-const C = {preset: null, categories: [], about: '', dirs: [], known: {}, provider: 'openrouter', model: 'perplexity/pplx-decider-v1.2', key: '',
+const C = {preset: null, categories: [], about: '', dirs: [], known: {}, ignore: [], provider: 'openrouter', model: 'perplexity/pplx-decider-v1.2', key: '',
            screenshots: true, report_time: '19:00', batch_window: '12:30-14:00'};
 const KINDS = [['focus', 'Focus'], ['neutral', 'Neutral'], ['distraction', 'Distraction']];
 // about 8 working hours a day, 22 days a month, one call a minute
@@ -160,20 +161,18 @@ const steps = [
     render: () => `<h1>About your work</h1><p class="lead">Helps the model tell your projects apart.</p>
       <div class="tabs"><button class="${contextTab === 'self' ? 'on' : ''}" onclick="tab('self')">${icon('user')} I'll write it</button>
         <button class="${contextTab === 'agent' ? 'on' : ''}" onclick="tab('agent')">${icon('bot')} My agent writes it</button></div>
-      ${contextTab === 'agent' ? `<div class="card">
+      ${contextTab === 'agent' && !agentFilled ? `<div class="card">
           <b>Paste this into any AI agent</b> <span class="hint">Claude Code, Codex, Cursor, Gemini CLI…</span>
-          <div class="prompt"><span id="prompt">Read ${esc(S.root)}/AGENT_SETUP.md and follow it to fill in my timelens context. Save the result to ${esc(S.agent_file)}</span>
+          <div class="prompt"><span id="prompt">Help me set up timelens: follow the instructions in ${esc(tilde(S.root))}/AGENT_SETUP.md and save the result to ${esc(tilde(S.agent_file))}</span>
             <button onclick="copyPrompt(this)" title="Copy">${icon('copy')}</button></div>
-          <p style="margin:6px 0 14px"><span class="pulse"></span>Waiting for your agent…</p>
+          <p class="hint" style="margin:0 0 12px">It will explain what it's doing, look through your project folders, maybe ask you a couple of quick questions, and fill in this page.</p>
+          <p style="margin:0 0 14px"><span class="pulse"></span>Waiting for your agent…</p>
           <details><summary class="hint" style="cursor:pointer">Agent can't write files? Paste its answer here</summary>
             <textarea id="pasted" rows="4" style="margin-top:8px" placeholder='{"about": "…", "known": {…}}'></textarea>
             <button style="margin-top:8px" onclick="applyPasted()">Use this</button> <span id="pasteout" class="hint"></span></details></div>`
-      : `${agentFilled ? `<div class="banner">${icon('bot')} Filled in by your agent. Check it over.</div>` : ''}
-        <label class="f">About you</label><textarea rows="3" oninput="C.about=this.value" placeholder="${esc(preset()?.about_hint || 'What you do and what you work on.')}">${esc(C.about)}</textarea>
-        <label class="f">Project folders</label>
-        <div class="row"><input id="dirs" style="flex:1" value="${esc(C.dirs.join(', '))}" placeholder="~/code"><button onclick="scan()">Find</button></div>
-        <div id="projects">${projectsHtml()}</div>`}` + nav(),
-    ok: () => true, enter: () => scan(true) },
+      : (contextTab === 'agent' ? `<div class="banner">${icon('check')} <span>Your agent filled this in. Check it and change anything that's off.</span>
+          <button style="margin-left:auto;padding:5px 12px;font-size:13px" onclick="api('/api/agent-reset',{});agentFilled=false;tab('agent')">Ask again</button></div>` : '') + contextFields()}` + nav(),
+    ok: () => true, enter: () => { scan(true); if (contextTab === 'agent') tab('agent'); } },
   { // 4. model and key
     render: () => { const p = S.providers[C.provider]; return `<h1>Connect a model</h1><p class="lead">Where each minute gets labelled.</p>
       ${Object.entries(S.providers).map(([id, x]) => `<div class="card opt ${C.provider === id ? 'on' : ''}" onclick="setProvider('${id}')">
@@ -223,7 +222,7 @@ function pick(id) {
     if (!C.categories.some(c => c.kind === 'none')) C.categories.push({name: 'other', description: 'None of the above.', example: '', kind: 'none'});
     C.categories.sort((a, b) => (a.kind === 'none') - (b.kind === 'none'));
     const prov = /openrouter/.test(e.api_url) ? 'openrouter' : /typesafe/.test(e.api_url) ? 'typesafe' : 'local';
-    Object.assign(C, {about: e.about || '', dirs: e.projects?.dirs || [], known: e.projects?.known || {}, screenshots: e.screenshots !== false,
+    Object.assign(C, {about: e.about || '', dirs: e.projects?.dirs || [], known: e.projects?.known || {}, ignore: e.projects?.ignore || [], screenshots: e.screenshots !== false,
       report_time: e.report_time || '19:00', provider: prov, model: e.model, batch_window: e.batch_window || C.batch_window});
   } else C.categories = preset().category.map(c => ({...c, hint: c.example, example: ''}));  // examples are optional: shown as hints
   draw();
@@ -236,33 +235,51 @@ function guide() {
     <div class="nav" style="margin-top:16px"><a href="${g.link}" target="_blank"><button>Open ${new URL(g.link).hostname}</button></a><button class="primary" onclick="$('#modal').innerHTML=''">Got it</button></div></div></div>`;
 }
 let found = {};
+const contextFields = () => `
+  <label class="f">About you</label><textarea class="field" rows="3" oninput="C.about=this.value" placeholder="${esc(preset()?.about_hint || 'What you do and what you work on.')}">${esc(C.about)}</textarea>
+  <label class="f">Project folders</label>
+  <div class="row"><input id="dirs" style="flex:1" value="${esc(C.dirs.join(', '))}" placeholder="~/code"><button onclick="scan()">Find</button></div>
+  <div id="projects">${projectsHtml()}</div>`;
 function projectsHtml() {
-  const names = Object.values(found).filter(Boolean).flat();
+  const names = Object.values(found).filter(Boolean).flat(), shown = names.filter(n => !C.ignore.includes(n));
   if (!names.length) return '';
-  return `<div class="card" style="margin-top:12px">${names.map(n =>
-    `<div class="proj"><span class="hint">${icon('folder')}</span><code>${esc(n)}</code><input class="field" placeholder="What is it? e.g. Client: Acme's site" value="${esc(C.known[n] || '')}" data-n="${esc(n)}" oninput="C.known[this.dataset.n]=this.value"></div>`).join('')}</div>`;
+  return `<div class="card projs" style="margin-top:12px">${shown.map(n =>
+    `<div class="proj"><span class="hint">${icon('folder')}</span><code>${esc(n)}</code>
+      <textarea class="ghost pdesc" rows="1" placeholder="What is it? e.g. Client: Acme's site" data-n="${esc(n)}" oninput="C.known[this.dataset.n]=this.value">${esc(C.known[n] || '')}</textarea>
+      <button class="x" title="Leave this folder out" data-n="${esc(n)}" onclick="C.ignore.push(this.dataset.n);redrawProjects()">×</button></div>`).join('')}
+    ${C.ignore.length ? `<p class="hint" style="margin:10px 0 0">Left out: ${C.ignore.map(n => `${esc(n)} <a href="#" data-n="${esc(n)}" onclick="C.ignore=C.ignore.filter(x=>x!==this.dataset.n);redrawProjects();return false">undo</a>`).join(' · ')}</p>` : ''}</div>`;
 }
+function redrawProjects() { $('#projects').innerHTML = projectsHtml(); fitAll() }
+const fitOne = t => { t.style.height = 'auto'; t.style.height = t.scrollHeight + 2 + 'px' };
+const fitAll = () => document.querySelectorAll('textarea.field, textarea.ghost').forEach(fitOne);
 async function scan(quiet) {
   const el = $('#dirs'); if (el) C.dirs = el.value.split(/[,\n]/).map(s => s.trim()).filter(Boolean);
-  if (!C.dirs.length && quiet) C.dirs = ['~/code', '~/Developer', '~/Projects', '~/src', '~/Documents/GitHub'];
-  found = await api('/api/folders', {dirs: C.dirs});
-  if (quiet) { C.dirs = C.dirs.filter(d => found[d]); found = Object.fromEntries(Object.entries(found).filter(([, v]) => v)); if ($('#dirs')) $('#dirs').value = C.dirs.join(', '); }
-  if ($('#projects')) $('#projects').innerHTML = projectsHtml();
+  const guessing = quiet && !C.dirs.length;  // nothing chosen yet: look in the usual places, keep the ones that exist
+  const dirs = guessing ? ['~/code', '~/Developer', '~/Projects', '~/src', '~/Documents/GitHub'] : C.dirs;
+  const res = await api('/api/folders', {dirs});
+  if (guessing && C.dirs.length) return;  // the agent (or the user) picked folders while we were looking
+  found = Object.fromEntries(Object.entries(res).filter(([, v]) => v || !guessing));
+  if (guessing) C.dirs = Object.keys(found);
+  if ($('#dirs')) $('#dirs').value = C.dirs.join(', ');
+  if ($('#projects')) redrawProjects();
 }
 function copyPrompt(b) { navigator.clipboard.writeText($('#prompt').textContent); b.innerHTML = icon('check') }
-function useAgentContext(a) {
-  Object.assign(C, {about: a.about || C.about, dirs: a.dirs || C.dirs, known: {...C.known, ...(a.known || {})}});
-  agentFilled = true; tab('self'); scan();
+function useAgentContext(a) {  // stay on the agent tab and show its draft in place, ready to review
+  Object.assign(C, {about: a.about || C.about, dirs: a.dirs || C.dirs, known: {...C.known, ...(a.known || {})},
+                    ignore: [...new Set([...C.ignore, ...(a.ignore || [])])]});
+  agentFilled = true; clearInterval(agentPoll); draw(); scan();
 }
 function applyPasted() {
   const t = $('#pasted').value, j = t.slice(t.indexOf('{'), t.lastIndexOf('}') + 1);
   try { useAgentContext(JSON.parse(j)) } catch { $('#pasteout').innerHTML = '<span class="err">That doesn\'t look like the JSON block. Copy everything between the braces.</span>' }
 }
+async function checkAgent() { const a = await api('/api/agent-context'); if (a.about || a.known) useAgentContext(a) }
 function tab(t) {
   contextTab = t; clearInterval(agentPoll);
-  if (t === 'agent') agentPoll = setInterval(async () => { const a = await api('/api/agent-context'); if (a.about || a.known) useAgentContext(a) }, 3000);
+  if (t === 'agent' && !agentFilled) { checkAgent(); agentPoll = setInterval(checkAgent, 3000); }
   draw();
 }
+const tilde = p => (p || '').replace(S.home, '~');
 async function test() {
   if ($('#key')) C.key = $('#key').value.trim();
   $('#testout').innerHTML = 'Testing…';
@@ -287,13 +304,12 @@ function draw() {
   const s = steps[step];
   $('.wrap').classList.toggle('wide', !!s.wide);
   $('#view').innerHTML = s.render();
-  const fit = t => { t.style.height = 'auto'; t.style.height = t.scrollHeight + 2 + 'px' };
-  document.querySelectorAll('textarea.field, textarea.ghost').forEach(fit);
   const n = $('#next');
-  document.oninput = e => { if (e.target.matches('textarea.field, textarea.ghost')) fit(e.target); if (n) n.disabled = !steps[step].ok(); };
+  fitAll();
+  document.oninput = e => { if (e.target.matches('textarea.field, textarea.ghost')) fitOne(e.target); if (n) n.disabled = !steps[step].ok(); };
   if (n) n.disabled = !s.ok();
 }
-function go(d) { if (step === 2 && contextTab === 'self') scan(); clearInterval(agentPoll); clearInterval(poll); step += d; draw(); steps[step].enter?.() }
+function go(d) { if (step === 2 && $('#dirs')) scan(); clearInterval(agentPoll); clearInterval(poll); step += d; draw(); steps[step].enter?.() }
 api('/api/state').then(s => {
   S = s; if (S.existing) pick('existing');
   const h = new URLSearchParams(location.hash.slice(1));  // #preset=clients&step=1&tab=agent opens a given screen (used for docs screenshots)

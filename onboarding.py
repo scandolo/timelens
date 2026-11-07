@@ -82,7 +82,8 @@ def build_config(c):
                    "intentional": [x["name"] for x in cats if x["kind"] in ("focus", "neutral")],
                    "distractions": [x["name"] for x in cats if x["kind"] == "distraction"]},
         "privacy": {"apps": DEFAULT_PRIVATE_APPS, "url_words": DEFAULT_PRIVATE_WORDS},
-        "projects": {"dirs": c["dirs"], "known": {k: v for k, v in c["known"].items() if v.strip()}},
+        "projects": {"dirs": c["dirs"], "ignore": c.get("ignore", []),
+                     "known": {k: v for k, v in c["known"].items() if v.strip() and k not in c.get("ignore", [])}},
     }
 
 
@@ -99,7 +100,8 @@ def write_config(cfg):
     lines += [f"{toml_str(k)} = {toml_str(v)}" for k, v in cfg["examples"].items()]
     lines += ["", "[report]"] + [f"{k} = {json.dumps(v)}" for k, v in cfg["report"].items()]
     lines += ["", "[privacy]"] + [f"{k} = {json.dumps(v)}" for k, v in cfg["privacy"].items()]
-    lines += ["", "[projects]", f"dirs = {json.dumps(cfg['projects']['dirs'])}", "", "[projects.known]"]
+    lines += ["", "[projects]", f"dirs = {json.dumps(cfg['projects']['dirs'])}",
+              f"ignore = {json.dumps(cfg['projects']['ignore'])}  # folders that aren't projects", "", "[projects.known]"]
     lines += [f"{toml_str(k)} = {toml_str(v)}" for k, v in cfg["projects"]["known"].items()]
     text = "\n".join(lines) + "\n"
     assert tomllib.loads(text)["categories"] == cfg["categories"]  # round-trip check before anything is replaced
@@ -233,6 +235,9 @@ class Handler(BaseHTTPRequestHandler):
                         store_key(cfg["keychain_service"], req["key"])
                     install_agents(cfg["report_time"])
                 return self.reply({"ok": True, "python": python_path(), "dry_run": DRY_RUN, "config": str(LOCAL)})
+            if self.path == "/api/agent-reset":
+                AGENT_FILE.unlink(missing_ok=True)
+                return self.reply({"ok": True})
             if self.path == "/api/preview":
                 return self.reply(preview(req["config"], req.get("projects") or []))
             if self.path == "/api/open-settings":

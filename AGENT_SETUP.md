@@ -1,47 +1,67 @@
-# Filling in timelens context (instructions for a coding agent)
+# Setting up timelens: instructions for an AI agent
 
-You're helping someone set up **timelens**, a time tracker on their Mac. Every minute it shows their front window to a
-small decision model, along with a short paragraph about them and a one-line description of each of their projects.
-Your job is to write that paragraph and those descriptions, so they don't have to.
+The person you're helping is setting up **timelens**, a time tracker for their Mac. Once a minute it shows the
+front window to a small AI model, together with a short paragraph about the person and a one-line description of
+each of their projects, so the model can tell their work apart. Your job is to write that paragraph and those
+descriptions for them. A setup page is open in their browser and fills itself in when you save the file.
 
-The setup page is open in their browser and checks for your output every few seconds.
+The person may have never used you for anything like this, so keep them oriented.
 
-## What to produce
+## 1. Say what you're doing (first message, before any tool use)
 
-Write one JSON file to the path given in the prompt (normally `~/Library/Application Support/timelens/agent-context.json`):
+Two or three plain sentences, for example:
+
+> I'll help set up timelens, the time tracker you're installing. I'm going to look through your project folders on
+> this Mac and write a short description of each one, so timelens can tell your projects apart. Nothing leaves your
+> Mac, and you'll review everything on the setup page before it's saved.
+
+## 2. Look around
+
+- Project folders: check `~/code`, `~/Developer`, `~/Projects`, `~/src` and `~/Documents/GitHub`, plus any folder
+  the person names. Keep the ones that exist.
+- For each subfolder, read the first lines of its README, its git remote (`git -C <folder> remote get-url origin`)
+  and its package name if there is one. Don't open other files.
+- If you already know this person from earlier sessions, use what you know.
+
+## 3. Ask, briefly (one message, only if needed)
+
+Ask at most three questions, numbered, each with your best guess so they can just say "yes":
+
+> 1. `acme-site` and `acme-api` look like work for a client called Acme. Right?
+> 2. `apps` has no README or remote. Should timelens ignore it?
+> 3. Besides coding, is most of your laptop time in the browser (email, docs, CRM)?
+
+If they skip a question, go with your guess and say so in your last message. Don't ask a second round.
+
+## 4. Write the file
+
+Save one JSON file to the path given in the prompt (normally `~/Library/Application Support/timelens/agent-context.json`):
 
 ```json
 {
-  "about": "2 to 4 sentences: what the person does, who they work for, which tools and apps they use for what.",
+  "about": "Two to four sentences about the person's work, written in the third person.",
   "dirs": ["~/code"],
   "known": {
     "acme-site": "Client: Acme's marketing website.",
-    "pebble-api": "Personal: an API for a side project called Pebble.",
-    "dotfiles": "Personal: machine configuration."
-  }
+    "pebble-api": "Personal: the API behind a side project called Pebble."
+  },
+  "ignore": ["apps"]
 }
 ```
 
-- `dirs`: folders whose subfolders are the person's projects. Check `~/code`, `~/Developer`, `~/Projects`,
-  `~/src` and `~/Documents/GitHub`, and any folder the person names. Keep only folders that exist.
-- `known`: one entry per subfolder of those folders, keyed by the exact folder name. Start each description with
-  `Client:`, `Work:` or `Personal:`, then say what it is in under 15 words. Name the client or employer when you know it.
-- `about`: plain sentences in the third person, as if introducing them to a colleague. Include habits that would
-  confuse someone watching their screen, such as using a coding agent to write documents, or one browser profile per client.
+- `known`: one entry per folder you're confident about. Start with `Client:`, `Work:` or `Personal:` and keep it
+  under 15 words. Name the client or employer when you know it.
+- `ignore`: folders the person wants left out, or that are clearly not projects (old copies, scratch folders).
+- `about`: what helps tell their activities apart: their role, who they work for, which tools they use for what,
+  and habits that would confuse someone watching their screen (for example, using a coding agent to write
+  documents). Leave out anything that doesn't help with that, such as where they live, their health, family,
+  finances or the names of other people.
 
-## How to find out
+Never include secrets, keys, email addresses or phone numbers. If you can't write files, print the JSON in one
+code block and ask the person to paste it into the setup page under "Agent can't write files?".
 
-1. List the project folders. For each one, read the README's first lines, the git remote URL
-   (`git -C <folder> remote get-url origin`) and the package name if there is one.
-2. If you have memory or notes about this person from earlier sessions, use them.
-3. Ask the person, in one short message, about anything you can't tell: which projects are for clients, the client
-   names, and what they mostly use their laptop for. Wait for the answer before writing the file.
+## 5. Finish (one short message)
 
-## Rules
+> Done. Go back to the timelens setup page: your projects are filled in there for you to check.
 
-- Stay on this Mac. Don't send anything anywhere, and don't open other files than the ones above.
-- Never put secrets, keys, email addresses, phone numbers or other people's personal details in the file.
-- Write the file only once, when it's complete. Then tell the person to look at the setup page: it fills itself in,
-  and they can edit everything before saving.
-- If you can't write files (a chat-only assistant, for example), print the JSON in a single code block instead and
-  tell the person to paste it into the setup page under "Agent can't write files?".
+Add one line for any guess you made. Nothing else.
