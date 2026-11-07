@@ -13,6 +13,7 @@ LOCAL = ROOT / "config.local.toml"
 DATA = Path.home() / "Library/Application Support/timelens"
 AGENTS = Path.home() / "Library/LaunchAgents"
 PORT = 8766
+DRY_RUN = bool(os.environ.get("TIMELENS_DRY_RUN"))  # walk through setup without touching the Keychain or launchd
 
 MODELS = {  # what the setup page offers; any System One / Decisions model works if you edit the config by hand
     "perplexity": {"label": "Perplexity Decider v1.2 via OpenRouter", "api_url": "https://openrouter.ai/api/alpha/decisions",
@@ -160,7 +161,7 @@ class Handler(BaseHTTPRequestHandler):
             return self.reply(PAGE().encode(), ctype="text/html; charset=utf-8")
         if self.path == "/api/state":
             existing = tomllib.loads(LOCAL.read_text()) if LOCAL.exists() else None
-            return self.reply({"presets": presets(), "models": MODELS, "existing": existing,
+            return self.reply({"presets": presets(), "models": MODELS, "existing": existing, "dry_run": DRY_RUN,
                                "home": str(Path.home()), "python": python_path()})
         if self.path == "/api/status":
             return self.reply(status())
@@ -175,11 +176,12 @@ class Handler(BaseHTTPRequestHandler):
                 return self.reply(test_key(req["config"], req["key"]))
             if self.path == "/api/install":
                 cfg = build_config(req["config"])
-                if req.get("key"):
-                    store_key(cfg["keychain_service"], req["key"])
                 write_config(cfg)
-                install_agents(cfg["report_time"])
-                return self.reply({"ok": True, "python": python_path()})
+                if not DRY_RUN:
+                    if req.get("key"):
+                        store_key(cfg["keychain_service"], req["key"])
+                    install_agents(cfg["report_time"])
+                return self.reply({"ok": True, "python": python_path(), "dry_run": DRY_RUN, "config": str(LOCAL)})
             if self.path == "/api/open-settings":
                 subprocess.run(["open", "x-apple.systempreferences:com.apple.preference.security?Privacy_ScreenCapture"])
                 return self.reply({"ok": True})

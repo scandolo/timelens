@@ -70,7 +70,7 @@ const steps = [
       <p class="hint">Turn this off to send only the app name, window title and web address: cheaper and more private, less accurate inside chat apps. Screenshots are deleted about a second after they're sent.</p>` },
     ok: () => !!tested },
   { // 5. start
-    render: () => `<h1>Start tracking</h1><p class="lead">This saves your setup to <code>config.local.toml</code>, puts your key in the Keychain and starts a background process that wakes once a minute.</p>
+    render: () => `${S.dry_run ? '<p class="card warn">Preview mode: this step saves your choices but installs nothing.</p>' : ''}<h1>Start tracking</h1><p class="lead">This saves your setup to <code>config.local.toml</code>, puts your key in the Keychain and starts a background process that wakes once a minute.</p>
       <div class="card"><b>${C.categories.length} categories</b> · ${esc(S.models[C.model].label)} · report at ${C.report_time} · screenshots ${C.screenshots ? 'on' : 'off'}</div>
       <div id="after"><button class="primary" onclick="install()">Start tracking</button> <span id="installout" class="hint"></span></div>`,
     ok: () => false },
@@ -109,8 +109,14 @@ async function test() {
 }
 async function install() {
   $('#installout').textContent = 'Setting up…';
-  try { const r = await api('/api/install', {config: C, key: C.key || null}); afterInstall(r.python) }
+  try { const r = await api('/api/install', {config: C, key: C.key || null}); r.dry_run ? afterDryRun(r) : afterInstall(r.python) }
   catch (e) { $('#installout').innerHTML = `<span class="err">${esc(e.message)}</span>` }
+}
+function afterDryRun(r) {
+  $('#after').innerHTML = `<div class="card"><b class="ok">✓ Preview finished.</b> Your setup was saved to <code>${esc(r.config)}</code>.
+    Because this is preview mode (<code>TIMELENS_DRY_RUN</code>), nothing went into the Keychain and no background process was started.
+    A normal run would now ask you to allow this file under Screen Recording:<br><code>${esc(r.python)}</code></div>
+    <div class="nav"><span></span><button class="primary" onclick="api('/api/done',{});$('#view').innerHTML='<h1>That was the whole setup.</h1><p class=lead>You can close this tab.</p>'">Done</button></div>`;
 }
 function afterInstall(py) {
   $('#after').innerHTML = `<div class="card"><b class="ok">✓ Running.</b> One permission left, so timelens can see the front window:
