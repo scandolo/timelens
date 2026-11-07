@@ -1,0 +1,44 @@
+# timelens default config. The setup page (./install.sh) writes your own copy to config.local.toml,
+# which is git-ignored and takes precedence over this file. Everything here can also be edited by hand.
+
+# Decision model endpoint. Any System One / Decisions model works with the same request.
+api_url = "https://openrouter.ai/api/alpha/decisions"
+model = "perplexity/pplx-decider-v1.2"
+provider = "Perplexity"           # pin the provider so OpenRouter never routes screenshots elsewhere ("" = any)
+keychain_service = "timelens-openrouter"
+price_per_mtok = 0.020
+
+interval_seconds = 60
+screenshots = true        # false = send only app, window title and URL (cheaper, more private, less accurate)
+idle_minutes = 5          # no input for this long = away (except during a meeting)
+min_confidence = 0.25     # answers below this show as "unclear" in reports
+report_time = "19:00"     # when the daily notification arrives
+
+# Sent with every question so the model can tell your contexts apart. Name your projects and clients.
+about = "The person works on a Mac. Describe what you do and what you work on here."
+
+# name = what it looks like on screen. Order matters slightly (models lean toward earlier options).
+[categories]
+work = "Making or editing something for work: documents, code, designs, spreadsheets, slides, data."
+messages = "Reading or writing messages to specific people: email, Slack, Teams, WhatsApp, direct messages."
+meetings = "On a live video or audio call, including screen sharing."
+learning = "Reading, watching or asking questions to understand something, without producing anything."
+admin = "Organising life and work: calendar, to-do lists, expenses, invoices, bookings, forms."
+downtime = "Social media feeds, news, videos, games or shopping for fun."
+other = "None of the above, or nothing in particular is on screen (desktop, settings, a loading page)."
+
+[report]
+focus = ["work"]                                                       # counts toward focus blocks
+intentional = ["work", "messages", "meetings", "learning", "admin"]    # counts as time you meant to spend
+distractions = ["downtime"]                                            # counted as switches away from work
+
+[privacy]
+# Never screenshot or send anything while these are in front. Logged as "private".
+apps = ["com.apple.Passwords", "com.apple.keychainaccess", "com.1password.1password", "com.bitwarden.desktop"]
+url_words = ["bank", "paypal", "revolut", "wise.com", "stripe.com/dashboard"]
+
+[projects]
+dirs = ["~/code"]   # every subfolder becomes a project option
+
+[projects.known]
+# folder-name = "what it is", e.g. "acme-site" = "Client: Acme's marketing website."

@@ -1,0 +1,148 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><title>Set up timelens</title>
+<meta name="viewport" content="width=device-width,initial-scale=1"><style>
+:root{--bg:#fafafa;--fg:#17181a;--muted:#6b6f76;--card:#fff;--border:#e3e5e8;--track:#eef0f2;--accent:#3b6fe0;--good:#1f9d62;--bad:#d4443f;--warn:#b7791f}
+@media (prefers-color-scheme:dark){:root{--bg:#0e0f11;--fg:#ecedef;--muted:#8d929a;--card:#16181b;--border:#2a2d31;--track:#23262a;--good:#3fc485;--bad:#f06a63;--warn:#e0a020}}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--fg);font:15px/1.5 -apple-system,BlinkMacSystemFont,"SF Pro Text",sans-serif}
+.wrap{max-width:720px;margin:0 auto;padding:40px 20px 80px}
+header{display:flex;align-items:center;gap:12px;margin-bottom:28px}header img{width:36px;height:36px}header b{font-size:19px;letter-spacing:-.01em}
+.steps{display:flex;gap:6px;margin-left:auto}.steps i{width:28px;height:4px;border-radius:2px;background:var(--track)}.steps i.on{background:var(--accent)}
+h1{font-size:28px;letter-spacing:-.02em;margin:0 0 6px}p.lead{color:var(--muted);margin:0 0 24px}
+.card{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:16px;margin-bottom:10px}
+.choice{display:block;cursor:pointer;transition:border-color .15s}.choice:hover{border-color:var(--muted)}
+.choice.on{border-color:var(--accent);box-shadow:0 0 0 1px var(--accent)}.choice b{display:block;margin-bottom:2px}.choice span{color:var(--muted);font-size:14px}
+.cat{display:grid;grid-template-columns:150px 1fr 124px 24px;gap:8px;align-items:start;padding:10px 0;border-top:1px solid var(--border)}
+.cat:first-child{border-top:0}
+input,textarea,select{font:inherit;color:inherit;background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:8px 10px;width:100%}
+textarea{resize:vertical;min-height:40px}input:focus,textarea:focus,select:focus{outline:2px solid var(--accent);outline-offset:-1px}
+label.f{display:block;font-weight:600;margin:18px 0 6px}label.f small{font-weight:400;color:var(--muted)}
+.row{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+button{font:inherit;border:1px solid var(--border);background:var(--card);color:var(--fg);border-radius:8px;padding:9px 16px;cursor:pointer}
+button.primary{background:var(--accent);border-color:var(--accent);color:#fff;font-weight:600}button:disabled{opacity:.5;cursor:default}
+button.x{padding:6px 0;border:0;background:none;color:var(--muted);font-size:18px;line-height:1}
+.nav{display:flex;justify-content:space-between;margin-top:28px}
+.hint{font-size:13px;color:var(--muted)}.ok{color:var(--good)}.err{color:var(--bad)}.warn{color:var(--warn)}
+.proj{display:grid;grid-template-columns:200px 1fr;gap:8px;align-items:center;margin:6px 0}.proj code{font-size:13px}
+code{font:13px ui-monospace,monospace;background:var(--track);padding:2px 6px;border-radius:5px;word-break:break-all}
+.live td{padding:6px 10px 6px 0;font-size:14px;border-top:1px solid var(--border)}.live{width:100%;border-collapse:collapse}
+ol.todo{padding-left:20px}ol.todo li{margin:8px 0}
+@media (max-width:620px){.cat{grid-template-columns:1fr 28px}.cat textarea,.cat select{grid-column:1}.proj{grid-template-columns:1fr}}
+</style></head><body><div class="wrap">
+<header><img src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%2314161a'/%3E%3Cg transform='translate(9 28)'%3E%3Crect width='10' height='8' rx='2' fill='%233b6fe0'/%3E%3Crect x='12' width='6' height='8' rx='2' fill='%232fa58a'/%3E%3Crect x='20' width='4' height='8' rx='2' fill='%23e0566b'/%3E%3Crect x='26' width='9' height='8' rx='2' fill='%236c8ff0'/%3E%3Crect x='37' width='9' height='8' rx='2' fill='%23e0a020'/%3E%3C/g%3E%3Ccircle cx='35' cy='32' r='13' fill='none' stroke='white' stroke-width='3.5'/%3E%3Cline x1='44.5' y1='41.5' x2='53' y2='50' stroke='white' stroke-width='4' stroke-linecap='round'/%3E%3C/svg%3E" alt=""><b>timelens</b><div class="steps" id="dots"></div></header>
+<main id="view"></main>
+</div><script>
+const $ = s => document.querySelector(s), esc = s => String(s ?? '').replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const api = (path, body) => fetch(path, body ? {method: 'POST', body: JSON.stringify(body)} : {}).then(async r => { const j = await r.json(); if (!r.ok) throw new Error(j.error); return j });
+let S, step = 0, tested = null, poll;
+const C = {preset: null, categories: [], about: '', dirs: [], known: {}, model: 'perplexity', key: '', screenshots: true, report_time: '19:00'};
+
+const steps = [
+  { // 1. goal
+    render: () => `<h1>What do you want to find out?</h1><p class="lead">Pick the closest goal. You'll edit its categories next, and you can change everything later.</p>
+      ${S.presets.map(p => `<label class="card choice ${C.preset === p.id ? 'on' : ''}" onclick="pick('${p.id}')"><b>${esc(p.title)}</b><span>${esc(p.blurb)}</span></label>`).join('')}
+      ${S.existing ? `<label class="card choice ${C.preset === 'existing' ? 'on' : ''}" onclick="pick('existing')"><b>Keep my current categories</b><span>Start from the setup you already have.</span></label>` : ''}`,
+    ok: () => !!C.preset },
+  { // 2. categories
+    render: () => `<h1>Your categories</h1><p class="lead">Every minute is filed under exactly one of these. Describe what you'd <i>see</i> on the screen, and keep them from overlapping: the model can't read your intentions.</p>
+      <div class="card">${C.categories.map((c, i) => `<div class="cat">
+        <input value="${esc(c.name)}" ${c.kind === 'none' ? 'disabled' : ''} oninput="C.categories[${i}].name=this.value.trim().toLowerCase().replace(/[^a-z0-9_]+/g,'_')" aria-label="Name">
+        <textarea rows="2" oninput="C.categories[${i}].description=this.value" aria-label="What it looks like">${esc(c.description)}</textarea>
+        ${c.kind === 'none' ? '<span class="hint">catch-all</span><span></span>' : `<select onchange="C.categories[${i}].kind=this.value" aria-label="Counts as">
+          ${[['focus','Focus'],['neutral','Neutral'],['distraction','Distraction']].map(([v,l]) => `<option value="${v}" ${c.kind===v?'selected':''}>${l}</option>`).join('')}</select>
+        <button class="x" title="Remove" onclick="C.categories.splice(${i},1);draw()">×</button>`}</div>`).join('')}</div>
+      <button onclick="C.categories.splice(C.categories.length-1,0,{name:'new_category',description:'',kind:'neutral'});draw()">+ Add a category</button>
+      <p class="hint"><b>Focus</b> counts toward focus blocks. <b>Distraction</b> counts as a switch away from work. Both feed the daily report.</p>`,
+    ok: () => C.categories.filter(c => c.kind === 'focus').length > 0 && C.categories.every(c => c.name && c.description.trim()) },
+  { // 3. context
+    render: () => `<h1>A little context</h1><p class="lead">This goes to the model with every minute, so it can tell your projects and clients apart. Two or three sentences are plenty.</p>
+      <label class="f">About you</label><textarea rows="4" oninput="C.about=this.value" placeholder="${esc(preset()?.about_hint || 'What you do and what you work on.')}">${esc(C.about)}</textarea>
+      <label class="f">Where your projects live <small>one folder per line; each subfolder becomes a project</small></label>
+      <div class="row"><textarea rows="2" id="dirs" style="flex:1">${esc(C.dirs.join('\n'))}</textarea><button onclick="scan()">Find projects</button></div>
+      <div id="projects">${projectsHtml()}</div>`,
+    ok: () => true, enter: () => scan(true) },
+  { // 4. model and key
+    render: () => { const m = S.models[C.model]; return `<h1>Connect a model</h1><p class="lead">timelens sends one request a minute to the model you choose. It costs about two cents a day.</p>
+      ${Object.entries(S.models).map(([id, x]) => `<label class="card choice ${C.model === id ? 'on' : ''}" onclick="C.model='${id}';tested=null;draw()"><b>${esc(x.label)}</b><span>$${x.price_per_mtok} per million tokens${id === 'perplexity' ? ' · recommended: cheapest, and pinned so no other host sees your screen' : ''}</span></label>`).join('')}
+      <label class="f">API key <small><a href="${m.key_url}" target="_blank">get one</a> · stored in your macOS Keychain, never in a file</small></label>
+      <div class="row"><input type="password" id="key" style="flex:1" value="${esc(C.key)}" placeholder="${S.existing ? 'leave empty to keep the key you saved before' : 'paste your key'}" oninput="C.key=this.value;tested=null"><button onclick="test()">Test it</button></div>
+      <p id="testout" class="hint">${tested ? `<span class="ok">✓ Works.</span> A sample Gmail inbox was filed as <b>${esc(tested.choice)}</b> (${tested.confidence}) in ${tested.seconds}s.` : 'The test sends one text-only request with your categories, so you can see an answer before anything runs in the background.'}</p>
+      <label class="f">Daily report at</label><input type="time" value="${C.report_time}" style="width:140px" oninput="C.report_time=this.value">
+      <label class="f"><input type="checkbox" style="width:auto" ${C.screenshots ? 'checked' : ''} onchange="C.screenshots=this.checked"> Send a screenshot of the front window</label>
+      <p class="hint">Turn this off to send only the app name, window title and web address: cheaper and more private, less accurate inside chat apps. Screenshots are deleted about a second after they're sent.</p>` },
+    ok: () => !!tested },
+  { // 5. start
+    render: () => `<h1>Start tracking</h1><p class="lead">This saves your setup to <code>config.local.toml</code>, puts your key in the Keychain and starts a background process that wakes once a minute.</p>
+      <div class="card"><b>${C.categories.length} categories</b> · ${esc(S.models[C.model].label)} · report at ${C.report_time} · screenshots ${C.screenshots ? 'on' : 'off'}</div>
+      <div id="after"><button class="primary" onclick="install()">Start tracking</button> <span id="installout" class="hint"></span></div>`,
+    ok: () => false },
+];
+
+const preset = () => S.presets.find(p => p.id === C.preset);
+function pick(id) {
+  C.preset = id;
+  if (id === 'existing') {
+    const e = S.existing, r = e.report || {}, kind = n => (r.focus || []).includes(n) ? 'focus' : (r.distractions || []).includes(n) ? 'distraction' : (r.intentional || []).includes(n) ? 'neutral' : 'none';
+    C.categories = Object.entries(e.categories).map(([name, description]) => ({name, description, kind: kind(name)}));
+    if (!C.categories.some(c => c.kind === 'none')) C.categories.push({name: 'other', description: 'None of the above.', kind: 'none'});
+    C.categories.sort((a, b) => (a.kind === 'none') - (b.kind === 'none'));
+    Object.assign(C, {about: e.about || '', dirs: e.projects?.dirs || [], known: e.projects?.known || {}, screenshots: e.screenshots !== false, report_time: e.report_time || '19:00'});
+    C.model = Object.keys(S.models).find(k => S.models[k].model === e.model) || 'perplexity';
+  } else C.categories = structuredClone(preset().category);
+  draw();
+}
+let found = {};
+function projectsHtml() {
+  const rows = Object.entries(found).flatMap(([d, names]) => names === null ? [`<p class="hint warn">${esc(d)} doesn't exist.</p>`] : names.map(n =>
+    `<div class="proj"><code>${esc(n)}</code><input placeholder="optional: what is it? e.g. Client: Acme's website" value="${esc(C.known[n] || '')}" oninput="C.known['${esc(n)}']=this.value"></div>`));
+  return rows.length ? `<p class="hint">Found ${rows.length} projects. A short description helps, especially for client work.</p>${rows.join('')}` : '';
+}
+async function scan(quiet) {
+  const el = $('#dirs'); if (el) C.dirs = el.value.split('\n').map(s => s.trim()).filter(Boolean);
+  if (!C.dirs.length && quiet) C.dirs = ['~/code', '~/Developer', '~/Projects', '~/Documents/GitHub'];
+  found = await api('/api/folders', {dirs: C.dirs});
+  if (quiet) { C.dirs = C.dirs.filter(d => found[d]); found = Object.fromEntries(Object.entries(found).filter(([, v]) => v)); if ($('#dirs')) $('#dirs').value = C.dirs.join('\n'); }
+  if ($('#projects')) $('#projects').innerHTML = projectsHtml();
+}
+async function test() {
+  C.key = $('#key').value.trim(); $('#testout').innerHTML = 'Testing…';
+  try { tested = await api('/api/test', {config: C, key: C.key || null}); draw() }
+  catch (e) { $('#testout').innerHTML = `<span class="err">That didn't work: ${esc(e.message)}</span>` }
+}
+async function install() {
+  $('#installout').textContent = 'Setting up…';
+  try { const r = await api('/api/install', {config: C, key: C.key || null}); afterInstall(r.python) }
+  catch (e) { $('#installout').innerHTML = `<span class="err">${esc(e.message)}</span>` }
+}
+function afterInstall(py) {
+  $('#after').innerHTML = `<div class="card"><b class="ok">✓ Running.</b> One permission left, so timelens can see the front window:
+    <ol class="todo"><li><button onclick="api('/api/open-settings',{})">Open Screen Recording settings</button></li>
+    <li>Click <b>+</b>, press <b>⌘⇧G</b>, paste this path and click Open: <br><code id="py">${esc(py)}</code> <button onclick="navigator.clipboard.writeText($('#py').textContent);this.textContent='Copied'">Copy</button></li>
+    <li>Make sure its switch is on, then <button onclick="api('/api/restart',{});this.textContent='Restarted'">restart timelens</button></li></ol></div>
+    <h3>Live: the last few minutes</h3><div id="live" class="hint">Waiting for the first minute…</div>
+    <div class="nav"><button onclick="api('/api/report',{})">Open today's report</button><button class="primary" onclick="api('/api/done',{});$('#view').innerHTML='<h1>All set.</h1><p class=lead>You can close this tab. Your first daily report arrives at ${C.report_time}.</p>'">Done</button></div>`;
+  poll = setInterval(live, 5000); live();
+}
+async function live() {
+  const s = await api('/api/status'); if (!$('#live')) return clearInterval(poll);
+  const rows = s.samples.map(r => `<tr><td>${new Date(r.ts * 1000).toLocaleTimeString([], {hour: '2-digit', minute: '2-digit'})}</td><td>${esc(r.app || '')}</td>
+    <td><b>${esc(r.status === 'ok' ? r.activity : r.status)}</b>${r.confidence ? ` <span class="hint">${r.confidence.toFixed(2)}</span>` : ''}</td><td>${esc(r.project && r.project !== 'none' ? r.project : '')}</td></tr>`).join('');
+  $('#live').innerHTML = (s.needs_permission ? '<p class="warn">Screenshots are being blocked: finish the permission step above, then restart timelens.</p>' : '')
+    + (rows ? `<table class="live">${rows}</table>` : 'Waiting for the first minute…');
+}
+function draw() {
+  $('#dots').innerHTML = steps.map((_, i) => `<i class="${i <= step ? 'on' : ''}"></i>`).join('');
+  const s = steps[step];
+  $('#view').innerHTML = s.render() + (step < steps.length - 1 ? `<div class="nav"><button ${step ? '' : 'disabled'} onclick="go(-1)">Back</button><button class="primary" id="next" onclick="go(1)">Continue</button></div>` : `<div class="nav"><button onclick="go(-1)">Back</button><span></span></div>`);
+  const fit = t => { t.style.height = 'auto'; t.style.height = t.scrollHeight + 2 + 'px' };
+  document.querySelectorAll('.cat textarea').forEach(fit);
+  const n = $('#next');
+  document.oninput = e => { if (e.target.matches('.cat textarea')) fit(e.target); if (n) n.disabled = !steps[step].ok(); };
+  if (n) n.disabled = !s.ok();
+}
+function go(d) { if (step === 2) scan(); step += d; draw(); steps[step].enter?.() }
+api('/api/state').then(s => {
+  S = s; if (S.existing) pick('existing');
+  const h = new URLSearchParams(location.hash.slice(1));  // #preset=clients&step=1 opens a given step (used for docs screenshots)
+  if (h.get('preset')) { pick(h.get('preset')); step = +(h.get('step') || 0); }
+  draw(); steps[step].enter?.();
+});
+</script></body></html>

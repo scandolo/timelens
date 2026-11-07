@@ -1,0 +1,36 @@
+<!doctype html><html><head><meta charset="utf-8"><style>
+:root{--bg:#fafafa;--fg:#17181a;--muted:#5f636a;--card:#fff;--border:#e3e5e8;--accent:#3b6fe0;--cloud:#fff4e0;--cloudb:#f0c36d;--local:#eaf6f1;--localb:#7cc8ad}
+@media (prefers-color-scheme:dark){:root{--bg:#0e0f11;--fg:#ecedef;--muted:#9a9fa7;--card:#16181b;--border:#2a2d31;--cloud:#2a2214;--cloudb:#8a6a2a;--local:#13241e;--localb:#2f7a60}}
+*{box-sizing:border-box}html,body{margin:0;background:var(--bg);color:var(--fg);font-family:-apple-system,BlinkMacSystemFont,sans-serif}
+.wrap{width:1280px;padding:44px 48px 48px}
+.zones{display:grid;grid-template-columns:1fr 270px;gap:22px}
+.zone{border-radius:18px;padding:20px 22px 24px;border:1.5px dashed}
+.local{background:var(--local);border-color:var(--localb)}.cloud{background:var(--cloud);border-color:var(--cloudb)}
+.zt{font-size:13px;font-weight:650;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);margin-bottom:16px}
+.row{display:flex;align-items:stretch;gap:12px}
+.box{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:14px 15px;flex:1;min-width:0}
+.box b{display:block;font-size:16px;margin-bottom:5px}.box span{font-size:13.5px;line-height:1.4;color:var(--muted);display:block}
+.arrow{align-self:center;color:var(--muted);font-size:20px}
+.down{display:flex;justify-content:space-between;padding:6px 60px;color:var(--muted);font-size:20px}
+.skip{font-size:13px;color:var(--muted);margin-top:14px}.skip code{font-size:12.5px}
+.cloud .box{height:calc(100% - 30px);display:flex;flex-direction:column;justify-content:center}
+</style></head><body><div class="wrap">
+<div class="zones">
+ <div class="zone local"><div class="zt">On your Mac</div>
+  <div class="row">
+   <div class="box"><b>⏱ Every 60s</b><span>launchd keeps one background process alive. No Dock icon, no menu bar.</span></div><div class="arrow">→</div>
+   <div class="box"><b>🛡 Gate</b><span>Idle or locked → <i>away</i>. Password manager or bank → <i>private</i>, nothing captured.</span></div><div class="arrow">→</div>
+   <div class="box"><b>📸 Look</b><span>Front-window screenshot (1280px JPEG, held for ~1s), app, title, browser URL.</span></div><div class="arrow">→</div>
+  </div>
+  <div class="down"><span></span><span>↓ typed answers come back</span></div>
+  <div class="row">
+   <div class="box"><b>🗄 SQLite</b><span>One row per minute: category, project, probabilities. Never the image.</span></div><div class="arrow">→</div>
+   <div class="box"><b>📊 Evening report</b><span>Day + week HTML: timeline, focus blocks, distraction switches, an insight. All plain code.</span></div><div class="arrow">→</div>
+   <div class="box"><b>🔔 Notification</b><span>“7h 42m on the laptop · 61% intentional”, at the time you pick.</span></div>
+  </div>
+ </div>
+ <div class="zone cloud"><div class="zt">The only network call</div>
+  <div class="box"><b>🧠 Decision model</b><span>Two typed questions per minute: <i>which category?</i> and <i>which project?</i> Answers are probabilities, not prose.<br><br>Perplexity Decider, Jev, Clef… any System One / Decisions API.</span></div>
+ </div>
+</div>
+</div></body></html>

@@ -1,0 +1,7 @@
+.venv/
+__pycache__/
+.scratch-data/
+.env
+eval/
+config.local.toml
+.agents/
