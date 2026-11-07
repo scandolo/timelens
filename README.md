@@ -2,34 +2,30 @@
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="docs/images/hero-dark.png">
-  <img alt="timelens" src="docs/images/hero-light.png" width="100%">
+  <img alt="timelens: every evening, the honest version of your day" src="docs/images/hero-light.png" width="100%">
 </picture>
 
 <br>
 
-**A time tracker for your Mac that knows what you did in each app, and for whom.**
+**Every evening, the honest version of your day.**<br>
+A Mac time tracker that looks at your screen once a minute and tells you where the hours went.
 
 ![macOS](https://img.shields.io/badge/macOS-tested%20on%2026-black?logo=apple)
-![Python](https://img.shields.io/badge/python-3.11%2B-3776AB?logo=python&logoColor=white)
-![Cost](https://img.shields.io/badge/cost-~%240.02%2Fday-2fa58a)
+![Cost](https://img.shields.io/badge/cost-%E2%89%88%20%240.50%2Fmonth-2fa58a)
+![Local mode](https://img.shields.io/badge/runs-cloud%20or%20fully%20local-6c8ff0)
 ![License](https://img.shields.io/badge/license-MIT-blue)
 
-[Try the demo](#try-it-in-30-seconds) · [Install](#install) · [What leaves your Mac](#what-leaves-your-mac) · [Categories](#categories) · [Models](#pick-the-model-you-trust) · [FAQ](#faq)
+[Install](#install) · [What you see](#what-you-see-each-evening) · [What leaves your Mac](#what-leaves-your-mac) · [Goals](#start-from-a-goal) · [Models and cost](#models-and-cost) · [FAQ](#faq)
 
 </div>
 
 ---
 
-Automatic time trackers count apps and websites. That worked while each app meant one kind of task. Today the same chat window, editor or browser tab holds your main project, a side project, a quick question and twenty minutes of drifting, and the tracker files all of it under one app name.
+Most days end with a feeling of having been busy and no clear idea of what with. Timers only work while you remember to press them, and automatic trackers count apps, which stopped meaning much once one chat window or editor started holding your main project, a side project, a quick question and twenty minutes of drifting. To them it's all "Claude" or "Chrome".
 
-timelens looks at what's on the screen instead. Once a minute it shows the front window to a small decision model and files that minute under categories you choose, using a few sentences of context only you can give it ("anything in the `pebble-api` repository is my main product"). Every evening you get the day back, minute by minute.
+timelens looks at what's on the screen instead. Once a minute it shows the front window to a small decision model, which files the minute under categories you chose, with a few sentences of context only you can give ("anything in the `pebble-api` repository is my main product"). At 7 pm a notification gives you the headline, and a report shows the rest.
 
-## What you find out
-
-- How your hours split between the projects and kinds of work you care about.
-- When your longest stretch of focus happened, and what ended it.
-- How often you drifted into distractions, compared with your usual Thursday.
-- What share of your laptop time went to things you meant to do.
+## What you see each evening
 
 <table>
 <tr>
@@ -38,56 +34,34 @@ timelens looks at what's on the screen instead. Once a minute it shows the front
   <source media="(prefers-color-scheme: dark)" srcset="docs/images/day-dark.png">
   <img alt="Daily report" src="docs/images/day-light.png">
 </picture>
-<p align="center"><b>The day</b>: a minute-by-minute timeline, hours per category and project, your longest focus block and one observation about the day.</p>
+<p align="center"><b>Your day</b>, minute by minute: hours per category and project, your longest stretch of focus, and how often you drifted.</p>
 </td>
 <td width="50%">
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="docs/images/week-dark.png">
   <img alt="Weekly report" src="docs/images/week-light.png">
 </picture>
-<p align="center"><b>The week</b>: seven days stacked, which is where habits like a mid-afternoon slump become hard to miss.</p>
+<p align="center"><b>Your week</b>, seven days stacked. This is where a mid-afternoon slump becomes hard to miss.</p>
 </td>
 </tr>
 </table>
 
-A notification arrives at the time you pick with the headline ("7h 42m on the laptop · 61% intentional"). The pages are plain HTML files on your disk. Every number in them is computed by ordinary Python from the minute log; the model labels minutes and nothing else.
-
-## Built to disappear
-
-Once it's installed there's nothing to open, start or click.
-
-- It runs as one launchd background process you never see. On the author's MacBook it uses about 0.1% of one CPU core and 22 MB of RAM.
-- Each minute costs around 2,350 tokens. At $0.02 per million, a full working day comes to about two cents.
-- It skips minutes when you're idle, the screen is locked, or a password manager or banking site is in front.
-- The app is two Python files of about 720 lines in total, so you can read it before you trust it.
-
-## Try it in 30 seconds
-
-The demo renders five weeks of an invented engineer's days with the same report code. It needs [uv](https://docs.astral.sh/uv/), but no API key, and it never touches your screen.
-
-```bash
-git clone https://github.com/scandolo/timelens && cd timelens
-uv run --python 3.13 timelens.py demo     # prints a folder; open the .html files inside
-```
+Drift and intentional time are compared with your own average for that weekday, so you can tell a good Thursday from a normal one. The reports are plain HTML files on your disk, and every number in them is computed by ordinary code from the minute log; the model only labels minutes.
 
 ## Install
 
-You need a Mac, [uv](https://docs.astral.sh/uv/) (`brew install uv`) and an API key from [OpenRouter](https://openrouter.ai/settings/keys) or [TypeSafe](https://console.typesafe.ai). Then:
-
 ```bash
-git clone https://github.com/scandolo/timelens && cd timelens
-./install.sh
+brew install scandolo/tap/timelens
+timelens setup
 ```
 
-That opens a short setup page in your browser:
+The second command opens a setup page in your browser and takes a few minutes:
 
-1. **Pick a goal**: an overview of your day, clients versus your own projects, deep work, distractions, or studying. Each comes with starting categories.
-2. **Edit the categories.** Rename them, describe what each looks like on screen, add your own example if you like, and mark each one as focus, neutral or distraction.
-3. **Add context**: a few sentences about your work and the folders where your projects live. Or let an AI agent write it: the page gives you one line to paste into Claude Code, Codex, Cursor or any other agent, which follows [`AGENT_SETUP.md`](AGENT_SETUP.md). Agents that can write files fill the page in by themselves; chat-only assistants give you a block to paste back.
-4. **Connect a model**: OpenRouter (Perplexity Decider, Jev or Clef-flash with one key), TypeSafe (Jev directly), or a model running on your own Mac. Each has a **?** guide to getting set up, and *Test* sends one real request before anything runs.
-5. **Preferences**: when the daily report arrives, and whether to include screenshots. Then *Start tracking*.
-6. **Permission**: the page opens the right System Settings pane, gives you the exact file to allow, and shows the first minutes being labelled.
-7. **Preview**: an invented week drawn with your own categories and projects, so you see your report before day one.
+1. **Pick a goal.** Each comes with starting categories you can rename, rewrite and extend.
+2. **Describe your work** in a few sentences and point it at your project folders, or paste one line into Claude Code, Codex or any other AI agent and let it fill this in from your repositories ([how it works](AGENT_SETUP.md)).
+3. **Connect a model** through OpenRouter or TypeSafe, or run one on your own Mac. Each option shows its monthly cost and has a step-by-step guide, and a test request runs before anything starts.
+4. **Allow Screen Recording.** The page opens the right settings pane and shows the first minutes being labelled.
+5. **See your report** drawn with your own categories before your first real day.
 
 <table>
 <tr>
@@ -99,144 +73,157 @@ That opens a short setup page in your browser:
 </td>
 <td width="50%">
 <picture>
+  <source media="(prefers-color-scheme: dark)" srcset="docs/images/setup-categories-dark.png">
+  <img alt="Setup: your categories" src="docs/images/setup-categories-light.png">
+</picture>
+</td>
+</tr>
+<tr>
+<td width="50%">
+<picture>
   <source media="(prefers-color-scheme: dark)" srcset="docs/images/setup-model-dark.png">
   <img alt="Setup: connect a model" src="docs/images/setup-model-light.png">
+</picture>
+</td>
+<td width="50%">
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="docs/images/setup-preview-dark.png">
+  <img alt="Setup: preview of your report" src="docs/images/setup-preview-light.png">
 </picture>
 </td>
 </tr>
 </table>
 
-<picture>
-  <source media="(prefers-color-scheme: dark)" srcset="docs/images/setup-categories-dark.png">
-  <img alt="Setup: edit your categories" src="docs/images/setup-categories-light.png">
-</picture>
-
-Run `./install.sh` again whenever you want to change your setup; it starts from what you already have. Day to day you'll only need these:
+After that there's nothing to open or click. timelens runs as one background process with no window or menu bar icon; on the author's MacBook it uses about 0.1% of one CPU core and 22 MB of memory.
 
 ```bash
-.venv/bin/python timelens.py report --open        # today's and this week's report, right now
-.venv/bin/python timelens.py report 2026-11-03    # any earlier day
-.venv/bin/python timelens.py sample --dry-run     # print the exact request it would send, and send nothing
-launchctl bootout gui/$UID/com.timelens.sampler   # pause (run ./install.sh again to resume)
+timelens report --open        # today's report and this week's, right now
+timelens report 2026-11-03    # any earlier day
+timelens setup                # change your goal, categories, model or report time
+timelens demo                 # an invented week, no API and no screen access
 ```
 
-To uninstall, run the two `launchctl bootout` lines at the top of `install.sh`, then delete `~/Library/LaunchAgents/com.timelens.*.plist` and `~/Library/Application Support/timelens`.
+<details><summary>Without Homebrew</summary>
+
+```bash
+git clone https://github.com/scandolo/timelens && cd timelens
+./install.sh                  # needs uv; opens the same setup page
+```
+</details>
+
+To pause, run `launchctl bootout gui/$UID/com.timelens.sampler` (`timelens setup` starts it again). To uninstall, also boot out `com.timelens.report`, delete `~/Library/LaunchAgents/com.timelens.*.plist` and `~/Library/Application Support/timelens`, then `brew uninstall timelens`.
 
 ## What leaves your Mac
 
-Here is everything that happens to what timelens sees.
+A tool that looks at your screen has to say exactly what happens to what it sees.
 
 | What | What happens to it |
 |---|---|
-| Screenshot of the front window | Resized to a 1280px JPEG in a temporary folder, sent in a single HTTPS request, and deleted about a second later. It is never written to the database. |
-| App name, window title, browser address | Sent in the same request, and stored locally so you can relabel past days if you change your categories. |
-| The model's answer | Stored locally: category, project, probabilities and token count. |
-| Minutes with a password manager or banking site in front | Logged as `private`. No screenshot is taken and no request is made. |
-| Idle or locked minutes | Logged as `away`. |
-| **On-this-Mac mode only:** screenshots waiting to be labelled | Kept in a private folder (`~/Library/Application Support/timelens/queue`, readable only by you) until the local model labels them, usually when you step away. Each one is deleted as soon as its minute is labelled. Nothing is sent over the network. |
+| Screenshot of the front window | Resized to a 1280px JPEG, sent in one HTTPS request, and deleted about a second later. It is never stored. |
+| App name, window title, web address | Sent in the same request and kept locally, so past days can be relabelled if you change categories. Email addresses, phone numbers and card or bank numbers in titles are masked first, and addresses lose their query string (searches, tokens, IDs). |
+| The model's answer | Kept locally: category, project, probabilities. |
+| A password manager or banking site in front | Logged as `private`. Nothing is captured or sent. |
+| Idle or locked screen | Logged as `away`. |
 
-In the cloud modes, the one request per minute goes to the provider you chose during setup. The default pins OpenRouter to Perplexity with fallbacks switched off, so your screenshots can't be rerouted to whichever host is cheapest that minute. Read that provider's data policy before you install, or pick another one.
+The request goes to the provider you chose. The default pins OpenRouter to Perplexity with fallbacks switched off, so your screenshots aren't rerouted to whichever host is cheapest that minute. You can also turn screenshots off and send only app, title and address, which is cheaper and works well for browsers and editors with descriptive titles.
 
-If you'd rather send no images at all, untick screenshots during setup (or set `screenshots = false`) and timelens works from the app, title and address alone. That's good enough for browsers and editors with descriptive titles, and noticeably worse inside chat apps.
+**Or keep everything on your Mac.** With the on-this-Mac option, a local model labels your minutes and nothing goes over the network. Labelling every minute with a 9B model would slow your Mac down while you work, so screenshots wait in a private folder (readable only by you) and get labelled when you've been away for ten minutes or during a window you choose, then deleted. This mode is experimental: it hasn't been tested end to end yet.
 
-timelens is built for one person looking at their own time. Reports stay on your disk and go to nobody else, and it shouldn't be installed on anyone else's computer.
+timelens is for one person looking at their own time. Reports stay on your disk, and it shouldn't be installed on anyone else's computer.
 
-## Categories
+## Start from a goal
 
-The setup page writes everything to `config.local.toml` (git-ignored), which you can also edit by hand. Each category is a name and a description of what it looks like on screen:
+| Goal | For | Categories it starts with |
+|---|---|---|
+| Show me where my time goes | Anyone curious about their day | work, messages, meetings, learning, admin, downtime |
+| Split my time between clients and my own projects | Freelancers and consultants | client work, own projects, messages, meetings, business admin, learning, downtime |
+| Protect my deep work | Engineers, writers and designers | deep work, reviewing, messages, meetings, planning, distractions |
+| Find out what's distracting me | Anyone who loses afternoons to tabs | work, messages, meetings, social media, video, news, shopping |
+| Keep my studying on track | Students | studying, assignments, messages, calls, downtime |
 
-```toml
-[categories]
-deep_work    = "Making something that needs concentration: writing, coding, designing, analysing data, editing."
-reviewing    = "Reviewing or responding to other people's work: pull requests, comments on documents or designs, approvals, QA."
-messages     = "Reading or writing messages to specific people: email, Slack, Teams, direct messages."
-meetings     = "On a live video or audio call, including screen sharing."
-planning     = "Organising work: task boards, issue trackers, calendars, roadmaps, to-do lists."
-distractions = "Social media, news, videos and browsing that has nothing to do with work."
-other        = "None of the above, or nothing in particular is on screen."
+Each category is a plain-English description of what it looks like on screen, plus an optional example of your own. Testing on real screenshots taught one rule above the others: a model can only judge what's visible. Reading documentation to learn and reading it to fix a bug look identical, so keep categories you could tell apart from a screenshot yourself. The presets live in [`presets.toml`](presets.toml), and a good one for a use case we haven't covered makes an excellent first pull request.
 
-[report]
-focus = ["deep_work"]
-distractions = ["distractions"]
+## How a minute gets labelled
+
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="docs/images/how-dark.png">
+  <img alt="How timelens works" src="docs/images/how-light.png" width="100%">
+</picture>
+
+timelens uses a **decision model**, sometimes called a System One model. It receives some state and a few multiple-choice questions and returns one answer per question, with a probability for every option and no generated text. That makes it fast (under a second), cheap, and honest about doubt: a minute the model isn't sure about is shown as "unclear" in your report. Here is the request, shortened:
+
+```jsonc
+{
+  "model": "perplexity/pplx-decider-v1.2",
+  "provider": { "order": ["Perplexity"], "allow_fallbacks": false },
+  "state": ["App: Cursor", "Window title: pebble-api — server.py", "URL: none", "img-3f2a…"],
+  "assets": { "img-3f2a…": { "type": "image", "format": "jpg", "data_base64": "<~150 KB>" } },
+  "questions": {
+    "activity": { "type": "choice", "instructions": "<your context> … what is the person doing right now?",
+                  "criteria": { "deep_work": "Making something that needs concentration… Example: …", "messages": "…", "other": "…" } },
+    "project":  { "type": "choice", "instructions": "<your context> … which project is this for?",
+                  "criteria": { "pebble-api": "Personal: an API…", "tidepool": "…", "none": "…" } }
+  }
+}
 ```
 
-Testing on real screenshots taught three things. A model can only judge what's visible: reading documentation to learn and reading it to fix a bug look identical, so merge categories you couldn't tell apart from a screenshot yourself. Keep categories mutually exclusive, and write the borderline cases into the descriptions. Order matters slightly, because decision models lean toward earlier options.
+## Models and cost
 
-The goal presets live in [`presets.toml`](presets.toml). A good preset for a use case we haven't covered makes an excellent first pull request.
+| Model | Via | ≈ per month* | Notes |
+|---|---|---|---|
+| **Perplexity Decider v1.2** (default) | OpenRouter | **$0.50** | Open weights, near the top of several public decision benchmarks |
+| Cloudflare Clef-flash | OpenRouter | $1.10 | Open weights |
+| TypeSafe Jev 1.14 | OpenRouter or TypeSafe | $2.35 | The first System One model, and the fastest in our test (0.55 s) |
+| Clef-flash on your Mac | oMLX | Free | Experimental; about 5.5 GB, labels minutes while you're away |
 
-## Pick the model you trust
+<sub>*Eight hours a day, 22 days a month, one call a minute, with screenshots. On 60 real screenshots the cloud models were equally accurate, on a sample too narrow to separate them, so price and trust in the provider decided the default.</sub>
 
-Any model that speaks the System One / Decisions format works. The setup page offers three through OpenRouter, Jev directly from TypeSafe, and a local option; anything else takes three lines in the config (`api_url`, `model`, `price_per_mtok`).
-
-**On this Mac (experimental).** If no screen content may leave your machine, run a decision model locally with [oMLX](https://github.com/jundot/omlx) and the open-weights [`clef-flash-oQ3e`](https://huggingface.co/Jundot/clef-flash-oQ3e) (about 5.5 GB). A 9B model labelling every minute would slow your Mac down while you work, so timelens switches to a queue: it captures as usual, then labels queued minutes when you've been away for 10 minutes or during a window you choose (say, lunch). Run `.venv/bin/python timelens.py process` to label everything at once. This path hasn't been tested end to end yet.
-
-| Model | Input $/M tokens | Tokens per call* | $ per day* | Median latency* | Notes |
-|---|---|---|---|---|---|
-| **Perplexity Decider v1.2** (default) | 0.020 | 1,635 | **$0.016** | 1.08 s | Open weights (Apache 2.0), ranks near the top of several public decision benchmarks |
-| TypeSafe Jev 1.14 | 0.042 | 3,712 | $0.075 | **0.55 s** | The first System One model, via TypeSafe's own API |
-| Cloudflare Clef-flash | 0.038 | 1,867 | $0.034 | 0.84 s | Open weights |
-| OpenAI GPT-6 Luna Decisions | 0.100 | 1,752 | $0.084 | 0.82 s | |
-| Liquid d1 | 0.020 | 2,067 | $0.020 | 0.88 s | Often disagreed with the others on projects |
-
-<sub>*Measured on 60 real screenshots at 480 calls a day. All five models were equally accurate on that sample, which was too narrow to separate them, so price and trust in the provider decided the default.</sub>
-
-To run the same comparison on your own screen, put your keys in `.env` (see `.env.example`) and run:
-
-```bash
-.venv/bin/python eval.py collect 60 30   # one screenshot every 30s for an hour, kept in eval/ (git-ignored)
-.venv/bin/python eval.py label           # label them yourself at http://localhost:8765, without seeing any model's answer
-.venv/bin/python eval.py compare         # every model on every screenshot: accuracy, calibration, cost and latency
-```
+Any model that speaks the System One / Decisions format works with three lines in `config.toml`. To compare models on your own screen, export `OPENROUTER_API_KEY` and `TYPESAFE_API_KEY` (or put them in a `.env` file in `~/Library/Application Support/timelens/`) and run `timelens eval collect 60 30`, then `timelens eval label` to label an hour of screenshots blind, then `timelens eval compare` for accuracy, calibration, cost and speed.
 
 ## FAQ
 
 <details><summary><b>How accurate is it?</b></summary>
-It's good at anything you could tell from a glance at the screen: a call, an inbox, a feed, a repository with a project's name on it. It's weaker where the difference lives in your head, such as reading to learn versus reading to get something done. Minutes below <code>min_confidence</code> show as "unclear", so a guess doesn't pass for a fact. Run <code>eval.py</code> on an hour of your own work to get a number for your setup.
+Good at anything you could tell from a glance: a call, an inbox, a feed, a repository with a project's name on it. Weaker where the difference lives in your head, such as reading to learn versus reading to get something done. Minutes below the confidence threshold show as "unclear" instead of being guessed. <code>timelens eval</code> gives you a number for your own setup.
 </details>
 
 <details><summary><b>Will I notice it on battery?</b></summary>
-Unlikely. The process sleeps 59 seconds of every 60, runs at background priority, and each wake-up is a screenshot, a resize and one ~150 KB upload. Running a vision model locally would use far more energy than that network call.
+Unlikely. The process sleeps 59 seconds of every 60 at background priority, and each wake-up is a screenshot, a resize and one ~150 KB upload.
 </details>
 
 <details><summary><b>Which browsers does it read addresses from?</b></summary>
-Safari, Chrome, Arc, Brave, Edge and Vivaldi. Firefox has no scripting hook for the current address, so for Firefox timelens relies on the window title and the screenshot.
-</details>
-
-<details><summary><b>Does it work with multiple monitors?</b></summary>
-Yes. It captures the frontmost window wherever it sits, rather than a whole display.
+Safari, Chrome, Arc, Brave, Edge and Vivaldi. Firefox has no scripting hook for the current address, so there timelens uses the window title and the screenshot.
 </details>
 
 <details><summary><b>What about calls where I don't touch the keyboard?</b></summary>
-After a minute filed under a category whose name contains "meeting" or "call", up to an hour of idle time still counts as active. Otherwise five idle minutes count as away.
+After a minute filed under a category with "meeting" or "call" in its name, up to an hour without input still counts as active. Otherwise five idle minutes count as away.
 </details>
 
-<details><summary><b>Why a decision model instead of a regular LLM?</b></summary>
-A chat model writes a sentence you then have to parse, costs more, and gives you no probability to decide when a label is too shaky to count. A decision model answers the multiple-choice question directly, usually in under a second.
+<details><summary><b>Why a decision model instead of ChatGPT or Claude?</b></summary>
+A chat model writes a sentence you then have to parse, costs more, and gives no probability to decide when a label is too shaky to count. A decision model answers the multiple-choice question directly.
 </details>
 
 <details><summary><b>Linux or Windows?</b></summary>
-Not yet. The macOS-specific part is about 70 lines (window list, screenshot, idle time, browser address); everything else is portable. A port would be a welcome pull request.
+Not yet. The macOS-specific part is about 70 lines (window list, screenshot, idle time, browser address), and a port would be a welcome pull request.
 </details>
 
 ## Project layout
 
 ```
-timelens.py       sampler, model request, reports, demo, self-test
+timelens.py       sampler, model request, masking, reports, demo, self-test
 onboarding.py     the setup page's local server: presets, config writer, Keychain, launchd
-onboarding.html   the setup page itself
-AGENT_SETUP.md    instructions a coding agent follows to fill in your context during setup
-presets.toml      the goal presets offered during setup
-config.toml       defaults; your own setup goes to config.local.toml
-install.sh        creates the Python environment and opens the setup page
+onboarding.html   the setup page
+presets.toml      the goals offered during setup
+AGENT_SETUP.md    what an AI agent follows to fill in your context
+bin/timelens      the command (creates its Python environment on first run)
 eval.py           collect real screenshots, label them blind, compare models
 docs/             README images and the script that renders them from demo data
 ```
 
-Your data lives in `~/Library/Application Support/timelens/` (`log.sqlite`, `reports/`, logs).
+Your setup and data live in `~/Library/Application Support/timelens/`.
 
 ## Contributing
 
-Issues and pull requests are welcome; [CONTRIBUTING.md](CONTRIBUTING.md) covers the few rules. Run `uv run --python 3.13 timelens.py selftest` before sending a change, and `./docs/render.sh` if you touch how the reports or the setup page look.
+Issues and pull requests are welcome; [CONTRIBUTING.md](CONTRIBUTING.md) has the few rules. Run `timelens selftest` before sending a change, and `./docs/render.sh` if you touch how the reports or the setup page look.
 
 ## License
 

@@ -8,7 +8,7 @@ The setup page is open in their browser and checks for your output every few sec
 
 ## What to produce
 
-Write one JSON file to `agent-context.json` in the timelens folder (the folder this file is in):
+Write one JSON file to the path given in the prompt (normally `~/Library/Application Support/timelens/agent-context.json`):
 
 ```json
 {

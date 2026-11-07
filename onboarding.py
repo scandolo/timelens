@@ -1,37 +1,41 @@
 #!/usr/bin/env python3
-"""Local setup page for timelens: pick a goal, edit categories, add context, test a key, start tracking.
+"""Local setup page for timelens: pick a goal, edit categories, add context, connect a model, start tracking.
 
 Runs on http://127.0.0.1:8766 and only talks to this Mac (plus one test request to the model you choose).
-`./install.sh` starts it; you can rerun it any time to change your setup.
+`timelens setup` (or ./install.sh in a git checkout) starts it; rerun it any time to change your setup.
 """
 import json, os, plistlib, subprocess, sys, tempfile, threading, time, tomllib, webbrowser
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 
-ROOT = Path(__file__).resolve().parent
-LOCAL = ROOT / "config.local.toml"
-DATA = Path.home() / "Library/Application Support/timelens"
+ROOT = Path(__file__).resolve().parent                    # where presets, the page and timelens.py are
+HOME = Path(os.environ.get("TIMELENS_HOME") or ROOT)      # stable install path for launchd (Homebrew's opt/ link)
+DATA = Path(os.environ.get("TIMELENS_DATA", Path.home() / "Library/Application Support/timelens"))
 AGENTS = Path.home() / "Library/LaunchAgents"
-PORT = 8766
+PORT = int(os.environ.get("TIMELENS_PORT", 8766))
 DRY_RUN = bool(os.environ.get("TIMELENS_DRY_RUN"))  # walk through setup without touching the Keychain or launchd
+LOCAL = Path(tempfile.mkdtemp()) / "config.toml" if DRY_RUN else DATA / "config.toml"  # where the setup is saved
+EXISTING = next((p for p in (DATA / "config.toml", ROOT / "config.local.toml") if p.exists()), None)
+AGENT_FILE = DATA / "agent-context.json"  # written by the user's AI agent, see AGENT_SETUP.md
 
 PROVIDERS = {  # what the setup page offers; any System One / Decisions endpoint works if you edit the config by hand
     "openrouter": {
         "label": "OpenRouter", "blurb": "One key, several decision models",
         "api_url": "https://openrouter.ai/api/alpha/decisions", "keychain_service": "timelens-openrouter",
         "models": [
-            {"id": "perplexity/pplx-decider-v1.2", "label": "Perplexity Decider v1.2", "pin": "Perplexity", "price": 0.020, "note": "recommended"},
-            {"id": "typesafe/jev-1.14", "label": "TypeSafe Jev 1.14", "pin": "TypeSafe", "price": 0.042, "note": "fastest"},
-            {"id": "cloudflare/clef-flash", "label": "Cloudflare Clef-flash", "pin": "Cloudflare", "price": 0.038, "note": "open weights"},
+            # tokens: typical input per call with a screenshot (measured for Perplexity; others scaled from eval.py ratios)
+            {"id": "perplexity/pplx-decider-v1.2", "label": "Perplexity Decider v1.2", "pin": "Perplexity", "price": 0.020, "tokens": 2350, "note": "recommended"},
+            {"id": "typesafe/jev-1.14", "label": "TypeSafe Jev 1.14", "pin": "TypeSafe", "price": 0.042, "tokens": 5300, "note": "fastest"},
+            {"id": "cloudflare/clef-flash", "label": "Cloudflare Clef-flash", "pin": "Cloudflare", "price": 0.038, "tokens": 2700, "note": "open weights"},
         ]},
     "typesafe": {
         "label": "TypeSafe", "blurb": "Jev, straight from its makers",
         "api_url": "https://api.typesafe.ai/v1/systemone", "keychain_service": "timelens-typesafe",
-        "models": [{"id": "jev-1.14.0", "label": "TypeSafe Jev 1.14", "pin": "", "price": 0.042, "note": ""}]},
+        "models": [{"id": "jev-1.14.0", "label": "TypeSafe Jev 1.14", "pin": "", "price": 0.042, "tokens": 5300, "note": ""}]},
     "local": {
         "label": "On this Mac", "blurb": "Nothing leaves your Mac. Labels minutes while you're away",
         "api_url": "http://127.0.0.1:8000/v1/systemone", "keychain_service": "",
-        "models": [{"id": "clef-flash-oQ3e", "label": "Cloudflare Clef-flash (5.5 GB, via oMLX)", "pin": "", "price": 0, "note": "experimental"}]},
+        "models": [{"id": "clef-flash-oQ3e", "label": "Cloudflare Clef-flash (5.5 GB, via oMLX)", "pin": "", "price": 0, "tokens": 0, "note": "experimental"}]},
 }
 DEFAULT_PRIVATE_APPS = ["com.apple.Passwords", "com.apple.keychainaccess", "com.1password.1password",
                         "com.bitwarden.desktop", "com.dashlane.dashlanephonefinal"]
@@ -43,10 +47,8 @@ def presets():
 
 
 def python_path():
-    """The binary macOS must allow under Screen Recording (the venv python resolves to it)."""
-    py = ROOT / ".venv/bin/python"
-    return subprocess.run([py, "-c", "import os,sys;print(os.path.realpath(sys.executable))"],
-                          capture_output=True, text=True).stdout.strip()
+    """The binary macOS must allow under Screen Recording: the real file behind this environment's python."""
+    return os.path.realpath(sys.executable)
 
 
 def folders(dirs):
@@ -101,6 +103,7 @@ def write_config(cfg):
     lines += [f"{toml_str(k)} = {toml_str(v)}" for k, v in cfg["projects"]["known"].items()]
     text = "\n".join(lines) + "\n"
     assert tomllib.loads(text)["categories"] == cfg["categories"]  # round-trip check before anything is replaced
+    LOCAL.parent.mkdir(parents=True, exist_ok=True)
     LOCAL.write_text(text)
 
 
@@ -113,7 +116,7 @@ def install_agents(report_time):
     """Two launchd agents: the sampler (always on) and the evening report."""
     DATA.mkdir(parents=True, exist_ok=True)
     AGENTS.mkdir(parents=True, exist_ok=True)
-    py, script = str(ROOT / ".venv/bin/python"), str(ROOT / "timelens.py")
+    py, script = sys.executable, str(HOME / "timelens.py")  # the venv this setup runs in, the stable install path
     hour, minute = (int(x) for x in report_time.split(":"))
     jobs = {
         "com.timelens.sampler": {"ProgramArguments": [py, script, "run"], "RunAtLoad": True, "KeepAlive": True},
@@ -201,12 +204,12 @@ class Handler(BaseHTTPRequestHandler):
         if self.path == "/":
             return self.reply(PAGE().encode(), ctype="text/html; charset=utf-8")
         if self.path == "/api/state":
-            existing = tomllib.loads(LOCAL.read_text()) if LOCAL.exists() else None
+            existing = tomllib.loads(EXISTING.read_text()) if EXISTING else None
             return self.reply({"presets": presets(), "providers": PROVIDERS, "existing": existing, "dry_run": DRY_RUN,
-                               "root": str(ROOT),
+                               "root": str(ROOT), "agent_file": str(AGENT_FILE),
                                "home": str(Path.home()), "python": python_path()})
         if self.path == "/api/agent-context":  # written by the user's coding agent, see AGENT_SETUP.md
-            f = ROOT / "agent-context.json"
+            f = AGENT_FILE
             return self.reply(json.loads(f.read_text()) if f.exists() else {})
         if self.path == "/api/status":
             return self.reply(status())
@@ -239,7 +242,7 @@ class Handler(BaseHTTPRequestHandler):
                 subprocess.run(["launchctl", "kickstart", "-k", f"gui/{os.getuid()}/com.timelens.sampler"])
                 return self.reply({"ok": True})
             if self.path == "/api/report":
-                subprocess.run([str(ROOT / ".venv/bin/python"), str(ROOT / "timelens.py"), "report", "--open"])
+                subprocess.run([sys.executable, str(ROOT / "timelens.py"), "report", "--open"])
                 return self.reply({"ok": True})
             if self.path == "/api/done":
                 threading.Thread(target=self.server.shutdown).start()

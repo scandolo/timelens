@@ -1,0 +1,20 @@
+#!/bin/zsh
+# The timelens command. `timelens setup` opens the setup page; everything else goes to timelens.py.
+# The Python environment lives with your data, so it survives Homebrew upgrades and git pulls.
+set -e
+APP=${TIMELENS_HOME:-${0:A:h:h}}
+DATA=${TIMELENS_DATA:-$HOME/Library/Application Support/timelens}
+VENV=$DATA/venv
+if [[ ! -x $VENV/bin/python ]]; then
+  command -v uv >/dev/null || { echo "timelens needs uv: brew install uv"; exit 1; }
+  echo "Setting up timelens (first run only, about 20 seconds)…"
+  mkdir -p "$DATA"
+  uv venv -q --python 3.13 "$VENV"
+  uv pip install -q -p "$VENV" pyobjc-framework-Quartz pyobjc-framework-Cocoa
+fi
+export TIMELENS_HOME=$APP
+case ${1:-help} in
+  setup) shift; exec "$VENV/bin/python" "$APP/onboarding.py" "$@" ;;
+  eval)  shift; exec "$VENV/bin/python" "$APP/eval.py" "$@" ;;
+  *)     exec "$VENV/bin/python" "$APP/timelens.py" "$@" ;;
+esac

@@ -13,11 +13,13 @@ from pathlib import Path
 import timelens as t
 
 ROOT = Path(__file__).resolve().parent
-EVAL = ROOT / "eval"
+EVAL = t.DATA / "eval"   # screenshots kept for the comparison live with your data, never in the repo
 SAMPLES = EVAL / "samples"
 LABELS = EVAL / "labels.json"
 RESULTS = EVAL / "results.jsonl"
-ENV = dict(l.split("=", 1) for l in (ROOT / ".env").read_text().split() if "=" in l)
+ENV = {k: v for f in (ROOT / ".env", t.DATA / ".env") if f.exists()  # keys: environment, then .env files
+       for k, v in (l.split("=", 1) for l in f.read_text().split() if "=" in l)} | {
+       k: os.environ[k] for k in ("OPENROUTER_API_KEY", "TYPESAFE_API_KEY") if k in os.environ}
 CATS = list(t.CATEGORIES)
 
 TS, OR = "https://api.typesafe.ai/v1/systemone", "https://openrouter.ai/api/alpha/decisions"

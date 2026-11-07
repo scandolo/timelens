@@ -1,25 +1,26 @@
 #!/usr/bin/env python3
-"""timelens: every minute, label what's on screen with a decision model; write daily/weekly HTML reports.
+"""timelens: every minute, label what's on screen with a decision model; write daily and weekly reports.
 
-  timelens.py run                  sample forever (launchd runs this)
-  timelens.py sample [--dry-run]   one sample, print the request (and the answer unless --dry-run)
-  timelens.py report [DATE] [--open] [--notify]
-  timelens.py process              label every queued minute now (batch mode, for local models)
-  timelens.py demo [DIR]           fill DIR with a synthetic week and render its reports (no API, no screen)
-  timelens.py selftest
+  timelens setup                   open the setup page (goals, categories, model, permission)
+  timelens report [DATE] [--open]  today's (or DATE's) report and its week
+  timelens sample [--dry-run]      one sample now; --dry-run prints the request and sends nothing
+  timelens process                 label every queued minute now (on-this-Mac mode)
+  timelens demo [DIR]              render an invented week, no API and no screen access
+  timelens selftest
+  timelens run                     sample forever (launchd runs this for you)
 
-Config: $TIMELENS_CONFIG, else config.local.toml (yours, git-ignored), else config.toml (the example).
+Your setup lives in ~/Library/Application Support/timelens/config.toml ($TIMELENS_CONFIG overrides it).
 """
-import base64, html, json, os, sqlite3, subprocess, sys, tempfile, time, tomllib, urllib.error, urllib.request, uuid
+import base64, html, json, os, re, sqlite3, subprocess, sys, tempfile, time, tomllib, urllib.error, urllib.request, uuid
 from collections import Counter
 from datetime import date, datetime, timedelta
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent
-CONFIG = Path(os.environ.get("TIMELENS_CONFIG") or next(
-    p for p in (ROOT / "config.local.toml", ROOT / "config.toml") if p.exists()))
-CFG = tomllib.loads(CONFIG.read_text())
 DATA = Path(os.environ.get("TIMELENS_DATA", Path.home() / "Library/Application Support/timelens"))
+CONFIG = Path(os.environ.get("TIMELENS_CONFIG") or next(  # yours, then a git checkout's local one, then the defaults
+    p for p in (DATA / "config.toml", ROOT / "config.local.toml", ROOT / "config.toml") if p.exists()))
+CFG = tomllib.loads(CONFIG.read_text())
 DB = DATA / "log.sqlite"
 QUEUE = DATA / "queue"   # batch mode only: screenshots waiting to be labelled by a local model
 
@@ -80,6 +81,30 @@ def browser_url(bundle):
         return None
     r = subprocess.run(["osascript", "-e", BROWSERS[bundle]], capture_output=True, text=True, timeout=5)
     return r.stdout.strip() or None
+
+
+EMAIL = re.compile(r"[\w.+-]+@[\w-]+\.[\w.-]+")
+IBAN = re.compile(r"\b[A-Z]{2}\d{2}(?: ?[A-Z0-9]{1,4}){4,8}\b")
+DIGITS = re.compile(r"(?<![\w.:#])\+?\(?\d[\d ()\-]{6,}\d(?![\w.:])")  # runs of digits with spaces, dashes, brackets
+
+
+def _mask_digits(m):
+    n = sum(ch.isdigit() for ch in m.group())  # dates (8 digits), times and versions stay readable
+    return "[number]" if n >= 12 else "[phone]" if n >= 9 else m.group()
+
+
+def redact(text):
+    """Mask email addresses, phone numbers, card/account numbers and IBANs before anything is stored or sent."""
+    if not text or not CFG.get("redact", True):
+        return text
+    return DIGITS.sub(_mask_digits, IBAN.sub("[iban]", EMAIL.sub("[email]", text)))
+
+
+def redact_url(url):
+    """Keep the site and path (what makes labels accurate); drop the query and fragment (tokens, searches, IDs)."""
+    if not url or not CFG.get("redact", True):
+        return url
+    return redact(url.split("#")[0].split("?")[0])
 
 
 def screenshot(window_id):
@@ -162,6 +187,7 @@ def sample(con, dry_run=False, verbose=False):
     url = browser_url(bundle)
     if bundle in CFG["privacy"]["apps"] or any(w in (url or "") for w in CFG["privacy"]["url_words"]):
         return con.execute("insert or replace into samples(ts, status, app) values(?, 'private', ?)", (ts, app))
+    title, url = redact(title), redact_url(url)
     jpeg = screenshot(wid) if wid and CFG.get("screenshots", True) else None
     if CFG.get("processing") == "batch" and not dry_run:  # local model: queue now, label later while you're away
         QUEUE.mkdir(mode=0o700, parents=True, exist_ok=True)
@@ -539,6 +565,10 @@ def selftest():
     assert m["active"] == 60 + 2 + 38 + 3 + 7 + 5
     assert focus_block([W, ("deep_work", "tidepool")] + [None]) == (1, 0, 0, "pebble-api")
     assert all(p["category"][-1]["kind"] == "none" for p in presets())  # every preset ends with the catch-all
+    assert redact("Inbox - jo@acme.com - Gmail") == "Inbox - [email] - Gmail"
+    assert redact("Call (555) 123-4567") == "Call [phone]" and redact("Pay 4111 1111 1111 1111") == "Pay [number]"
+    assert redact("Sprint 2026-11-07 · 14:30 · v1.14.0 · PR #4411") == "Sprint 2026-11-07 · 14:30 · v1.14.0 · PR #4411"
+    assert redact_url("https://x.com/search?q=secret#top") == "https://x.com/search"
     print("selftest ok")
 
 
