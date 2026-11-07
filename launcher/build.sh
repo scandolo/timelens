@@ -15,5 +15,5 @@ cp Info.plist $OUT/
 cp timelens.icns $OUT/Resources/
 codesign --force --options runtime --timestamp --sign "$IDENTITY" build/timelens.app
 codesign --verify --strict --verbose=1 build/timelens.app
-ditto -c -k --keepParent build/timelens.app build/timelens-launcher.zip
+ditto -c -k --norsrc --noextattr --noqtn --keepParent build/timelens.app build/timelens-launcher.zip  # no ._ metadata files
 shasum -a 256 build/timelens-launcher.zip
