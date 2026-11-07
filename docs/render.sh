@@ -26,8 +26,9 @@ mkdir -p docs/images
 for scheme in light dark; do
   shot $scheme 820 735 day file://$TMP/demo/reports/$DAY
   shot $scheme 820 830 week file://$TMP/demo/reports/$WEEK
-  shot $scheme 760 760 setup-goal "http://127.0.0.1:8766/#preset=deep_work&step=0"
-  shot $scheme 760 900 setup-categories "http://127.0.0.1:8766/#preset=deep_work&step=1"
+  shot $scheme 860 640 setup-goal "http://127.0.0.1:8766/#preset=deep_work&step=0"
+  shot $scheme 1120 980 setup-categories "http://127.0.0.1:8766/#preset=deep_work&step=1"
+  shot $scheme 860 640 setup-agent "http://127.0.0.1:8766/#preset=deep_work&step=2&tab=agent"
 done
 for scheme in light dark; do  # the hero embeds the day screenshot, so render it after
   shot $scheme 1280 640 hero file://$PWD/docs/src/hero.html

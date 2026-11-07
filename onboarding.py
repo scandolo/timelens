@@ -61,6 +61,7 @@ def build_config(c):
         "report_time": c["report_time"] or "19:00",
         "about": c["about"].strip(),
         "categories": {x["name"].strip(): x["description"].strip() for x in cats},
+        "examples": {x["name"].strip(): x["example"].strip() for x in cats if x.get("example", "").strip()},
         "report": {"focus": [x["name"] for x in cats if x["kind"] == "focus"],
                    "intentional": [x["name"] for x in cats if x["kind"] in ("focus", "neutral")],
                    "distractions": [x["name"] for x in cats if x["kind"] == "distraction"]},
@@ -77,6 +78,8 @@ def write_config(cfg):
         lines.append(f"{k} = {str(v).lower() if isinstance(v, bool) else toml_str(v) if isinstance(v, str) else v}")
     lines += [f"about = {toml_str(cfg['about'])}", "", "[categories]"]
     lines += [f"{toml_str(k)} = {toml_str(v)}" for k, v in cfg["categories"].items()]
+    lines += ["", "# A real-life example per category, sent to the model with the description", "[examples]"]
+    lines += [f"{toml_str(k)} = {toml_str(v)}" for k, v in cfg["examples"].items()]
     lines += ["", "[report]"] + [f"{k} = {json.dumps(v)}" for k, v in cfg["report"].items()]
     lines += ["", "[privacy]"] + [f"{k} = {json.dumps(v)}" for k, v in cfg["privacy"].items()]
     lines += ["", "[projects]", f"dirs = {json.dumps(cfg['projects']['dirs'])}", "", "[projects.known]"]
@@ -162,7 +165,11 @@ class Handler(BaseHTTPRequestHandler):
         if self.path == "/api/state":
             existing = tomllib.loads(LOCAL.read_text()) if LOCAL.exists() else None
             return self.reply({"presets": presets(), "models": MODELS, "existing": existing, "dry_run": DRY_RUN,
+                               "root": str(ROOT),
                                "home": str(Path.home()), "python": python_path()})
+        if self.path == "/api/agent-context":  # written by the user's coding agent, see AGENT_SETUP.md
+            f = ROOT / "agent-context.json"
+            return self.reply(json.loads(f.read_text()) if f.exists() else {})
         if self.path == "/api/status":
             return self.reply(status())
         self.reply({"error": "not found"}, 404)
@@ -203,7 +210,8 @@ class Handler(BaseHTTPRequestHandler):
 if __name__ == "__main__":
     server = ThreadingHTTPServer(("127.0.0.1", PORT), Handler)
     url = f"http://127.0.0.1:{PORT}"
-    print(f"timelens setup is open at {url} (Ctrl-C to quit)")
+    print(f"\nThe timelens setup page is opening in your browser: {url}\n"
+          "(If it didn't open, paste that address into your browser. Press Ctrl-C here to stop.)\n")
     if not os.environ.get("TIMELENS_NO_BROWSER"):
         threading.Timer(0.5, webbrowser.open, [url]).start()
     try:

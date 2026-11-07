@@ -110,7 +110,9 @@ def projects(cfg=None):
 
 def build_request(app, title, url, jpeg, cfg=None):
     cfg = cfg or CFG
-    categories = {k: " ".join(v.split()) for k, v in cfg["categories"].items()}
+    examples = cfg.get("examples", {})
+    categories = {k: " ".join(v.split()) + (f" Example: {examples[k]}." if k in examples else "")
+                  for k, v in cfg["categories"].items()}
     ref = f"img-{uuid.uuid4()}"
     state = [f"App: {app}", f"Window title: {title or 'unknown'}", f"URL: {url or 'none'}"] + ([ref] if jpeg else [])
     seen = "the app, window title, URL" + (" and the screenshot of the active window" if jpeg else "")

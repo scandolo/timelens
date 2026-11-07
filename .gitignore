@@ -5,3 +5,4 @@ __pycache__/
 eval/
 config.local.toml
 .agents/
+agent-context.json

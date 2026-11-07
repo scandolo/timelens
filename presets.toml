@@ -1,177 +1,263 @@
-# Starting points offered during setup. Every category is a name, a plain-English definition the model reads,
-# and a kind: "focus" (counts toward focus blocks), "neutral", "distraction" (counted as switches),
-# or "none" (the catch-all). Definitions describe what is visible on screen, and don't overlap.
+# Starting points offered during setup. Each category has:
+#   description  what it looks like on screen (sent to the model)
+#   example      one real-life case (also sent to the model)
+#   kind         "focus" (counts toward focus blocks), "neutral", "distraction" (counted as switches),
+#                or "none" (the catch-all, always last)
+#   icon         an icon name from onboarding.html
+# Descriptions describe what is visible on screen, and don't overlap.
 
 [[preset]]
 id = "overview"
+icon = "compass"
 title = "Show me where my time goes"
-blurb = "A broad picture of a working day: making things, messages, meetings, learning, admin and downtime."
+audience = "For anyone curious about their day"
+blurb = "Work, messages, meetings, learning and downtime."
 about_hint = "I'm a product manager at a 40-person startup. Most of my work happens in Linear, Figma, Notion and Google Docs."
   [[preset.category]]
   name = "work"
+  icon = "pen"
   kind = "focus"
   description = "Making or editing something for work: documents, code, designs, spreadsheets, slides, data."
+  example = "Writing a spec in Google Docs"
   [[preset.category]]
   name = "messages"
+  icon = "chat"
   kind = "neutral"
   description = "Reading or writing messages to specific people: email, Slack, Teams, WhatsApp, direct messages."
+  example = "Replying to a thread in Slack"
   [[preset.category]]
   name = "meetings"
+  icon = "video"
   kind = "neutral"
   description = "On a live video or audio call, including screen sharing."
+  example = "A Zoom call with the team"
   [[preset.category]]
   name = "learning"
+  icon = "book"
   kind = "neutral"
-  description = "Reading, watching or asking questions to understand something, without producing anything: articles, documentation, tutorials, courses."
+  description = "Reading, watching or asking questions to understand something, without producing anything."
+  example = "Reading the React documentation"
   [[preset.category]]
   name = "admin"
+  icon = "calendar"
   kind = "neutral"
   description = "Organising life and work: calendar, to-do lists, expenses, invoices, bookings, forms."
+  example = "Filing an expense report"
   [[preset.category]]
   name = "downtime"
+  icon = "coffee"
   kind = "distraction"
   description = "Social media feeds, news, videos, games or shopping for fun."
+  example = "Scrolling Instagram"
   [[preset.category]]
   name = "other"
+  icon = "dots"
   kind = "none"
-  description = "None of the above, or nothing in particular is on screen (desktop, settings, a loading page)."
+  description = "None of the above, or nothing in particular is on screen."
+  example = "The desktop, or System Settings"
 
 [[preset]]
 id = "clients"
+icon = "briefcase"
 title = "Split my time between clients and my own projects"
-blurb = "For freelancers, consultants and anyone billing hours: see which client got which part of the week."
+audience = "For freelancers and consultants"
+blurb = "Which client got which hours, and what went to your own projects."
 about_hint = "I'm a freelance designer. My clients are Acme (repository acme-site) and Initech (Figma file 'Initech app'). My own project is a newsletter."
   [[preset.category]]
   name = "client_work"
+  icon = "briefcase"
   kind = "focus"
   description = "Work for a client: anything in a client's files, tools, accounts or repositories."
+  example = "Editing a client's website in VS Code"
   [[preset.category]]
   name = "own_projects"
+  icon = "sprout"
   kind = "focus"
   description = "Working on personal or side projects that are not for a client."
+  example = "Drafting your own newsletter"
   [[preset.category]]
   name = "messages"
+  icon = "chat"
   kind = "neutral"
   description = "Reading or writing messages to specific people: email, Slack, Teams, WhatsApp, direct messages."
+  example = "Emailing a client"
   [[preset.category]]
   name = "meetings"
+  icon = "video"
   kind = "neutral"
   description = "On a live video or audio call, including screen sharing."
+  example = "A kickoff call on Google Meet"
   [[preset.category]]
   name = "business_admin"
+  icon = "receipt"
   kind = "neutral"
   description = "Running the business: invoices, accounting, contracts, proposals, scheduling, finding new clients."
+  example = "Sending an invoice"
   [[preset.category]]
   name = "learning"
+  icon = "book"
   kind = "neutral"
   description = "Reading, watching or asking questions to understand something, without producing anything."
+  example = "Watching a Figma tutorial"
   [[preset.category]]
   name = "downtime"
+  icon = "coffee"
   kind = "distraction"
   description = "Social media feeds, news, videos, games or shopping for fun."
+  example = "YouTube over lunch"
   [[preset.category]]
   name = "other"
+  icon = "dots"
   kind = "none"
   description = "None of the above, or nothing in particular is on screen."
+  example = "The desktop, or System Settings"
 
 [[preset]]
 id = "deep_work"
+icon = "target"
 title = "Protect my deep work"
-blurb = "Separates concentrated making from reviewing, coordinating and drifting, so you can see what eats your best hours."
+audience = "For engineers, writers and designers"
+blurb = "How much of your day is real focus, and what breaks it."
 about_hint = "I'm a software engineer. I build two products: pebble (an API, repository pebble-api) and tidepool (an iOS app)."
   [[preset.category]]
   name = "deep_work"
+  icon = "target"
   kind = "focus"
   description = "Making something that needs concentration: writing, coding, designing, analysing data, editing."
+  example = "Coding a feature in VS Code"
   [[preset.category]]
   name = "reviewing"
+  icon = "eye"
   kind = "neutral"
   description = "Reviewing or responding to other people's work: pull requests, comments on documents or designs, approvals, QA."
+  example = "Reviewing a pull request on GitHub"
   [[preset.category]]
   name = "messages"
+  icon = "chat"
   kind = "neutral"
   description = "Reading or writing messages to specific people: email, Slack, Teams, direct messages."
+  example = "Answering Slack DMs"
   [[preset.category]]
   name = "meetings"
+  icon = "video"
   kind = "neutral"
   description = "On a live video or audio call, including screen sharing."
+  example = "Stand-up on Zoom"
   [[preset.category]]
   name = "planning"
+  icon = "calendar"
   kind = "neutral"
   description = "Organising work: task boards, issue trackers, calendars, roadmaps, to-do lists."
+  example = "Updating tickets in Linear"
   [[preset.category]]
   name = "distractions"
+  icon = "zap"
   kind = "distraction"
   description = "Social media, news, videos and browsing that has nothing to do with work."
+  example = "Reading Hacker News"
   [[preset.category]]
   name = "other"
+  icon = "dots"
   kind = "none"
   description = "None of the above, or nothing in particular is on screen."
+  example = "The desktop, or System Settings"
 
 [[preset]]
 id = "distractions"
+icon = "zap"
 title = "Find out what's distracting me"
-blurb = "Keeps work broad and splits distractions finely, so you can see which one costs you the most."
+audience = "For anyone who loses afternoons to tabs"
+blurb = "Which distraction costs you the most."
 about_hint = "I work in marketing. Work is mostly Google Docs, HubSpot and Slack."
   [[preset.category]]
   name = "work"
+  icon = "pen"
   kind = "focus"
   description = "Making or editing something for work: documents, code, designs, spreadsheets, campaigns."
+  example = "Building a campaign in HubSpot"
   [[preset.category]]
   name = "messages"
+  icon = "chat"
   kind = "neutral"
   description = "Reading or writing messages to specific people: email, Slack, Teams, direct messages."
+  example = "Clearing the inbox"
   [[preset.category]]
   name = "meetings"
+  icon = "video"
   kind = "neutral"
   description = "On a live video or audio call, including screen sharing."
+  example = "A weekly sync on Teams"
   [[preset.category]]
   name = "social_media"
+  icon = "phone"
   kind = "distraction"
   description = "Scrolling social media: X, Instagram, LinkedIn feed, Reddit, TikTok, Facebook."
+  example = "Scrolling the LinkedIn feed"
   [[preset.category]]
   name = "video"
+  icon = "play"
   kind = "distraction"
   description = "YouTube, Netflix, Twitch or other video watched for entertainment."
+  example = "A YouTube video essay"
   [[preset.category]]
   name = "news"
+  icon = "news"
   kind = "distraction"
   description = "News sites, newsletters and blogs read for interest rather than for a task."
+  example = "Reading a news site"
   [[preset.category]]
   name = "shopping"
+  icon = "bag"
   kind = "distraction"
   description = "Browsing online shops, marketplaces or travel sites."
+  example = "Comparing flights"
   [[preset.category]]
   name = "other"
+  icon = "dots"
   kind = "none"
   description = "None of the above, or nothing in particular is on screen."
+  example = "The desktop, or System Settings"
 
 [[preset]]
 id = "study"
+icon = "cap"
 title = "Keep my studying on track"
-blurb = "For students: course work and assignments versus everything that competes with them."
+audience = "For students"
+blurb = "Coursework and assignments versus everything else."
 about_hint = "I'm a second-year economics student. Courses: Econometrics, Macroeconomics. My thesis lives in a folder called thesis."
   [[preset.category]]
   name = "studying"
+  icon = "book"
   kind = "focus"
   description = "Course material: lectures, readings, slides, notes, flashcards, revision."
+  example = "Watching a recorded lecture"
   [[preset.category]]
   name = "assignments"
+  icon = "pen"
   kind = "focus"
   description = "Producing graded work: essays, reports, problem sets, coding exercises, a thesis."
+  example = "Writing an essay in Word"
   [[preset.category]]
   name = "messages"
+  icon = "chat"
   kind = "neutral"
   description = "Reading or writing messages to specific people: email, WhatsApp, Discord, Slack."
+  example = "The class group chat"
   [[preset.category]]
   name = "calls"
+  icon = "video"
   kind = "neutral"
   description = "On a live video or audio call that isn't a lecture."
+  example = "A study-group call on Discord"
   [[preset.category]]
   name = "downtime"
+  icon = "coffee"
   kind = "distraction"
   description = "Social media feeds, videos, games, news or shopping for fun."
+  example = "Scrolling TikTok"
   [[preset.category]]
   name = "other"
+  icon = "dots"
   kind = "none"
   description = "None of the above, or nothing in particular is on screen."
+  example = "The desktop, or System Settings"

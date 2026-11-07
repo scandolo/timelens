@@ -82,8 +82,8 @@ git clone https://github.com/scandolo/timelens && cd timelens
 That opens a short setup page in your browser:
 
 1. **Pick a goal.** Each one comes with a starting set of categories: an overview of your day, clients versus your own projects, deep work, distractions, or studying.
-2. **Edit the categories.** Rename them, rewrite what each one looks like on screen, and mark which count as focus and which as distraction.
-3. **Add context.** A few sentences about what you do, and the folders where your projects live. Each subfolder becomes a project the model can recognise.
+2. **Edit the categories.** Rename them, describe what each one looks like on screen, give a real-life example, and mark which count as focus and which as distraction.
+3. **Add context.** A few sentences about what you do, and the folders where your projects live; each subfolder becomes a project the model can recognise. Or hand this step to your coding agent: the page gives you one line to paste into Claude Code, Codex or Cursor, the agent reads your project folders (following [`AGENT_SETUP.md`](AGENT_SETUP.md)), and the page fills itself in for you to review.
 4. **Connect a model and test it.** Paste your key and press *Test it*: one text-only request comes back with a real answer before anything runs in the background. The key goes into your macOS Keychain.
 5. **Start tracking**, then grant Screen Recording. The page gives you the exact file to allow and shows the first minutes being labelled as they arrive.
 
@@ -214,6 +214,7 @@ Not yet. The macOS-specific part is about 70 lines (window list, screenshot, idl
 timelens.py       sampler, model request, reports, demo, self-test
 onboarding.py     the setup page's local server: presets, config writer, Keychain, launchd
 onboarding.html   the setup page itself
+AGENT_SETUP.md    instructions a coding agent follows to fill in your context during setup
 presets.toml      the goal presets offered during setup
 config.toml       defaults; your own setup goes to config.local.toml
 install.sh        creates the Python environment and opens the setup page
