@@ -4,6 +4,7 @@
   timelens.py run                  sample forever (launchd runs this)
   timelens.py sample [--dry-run]   one sample, print the request (and the answer unless --dry-run)
   timelens.py report [DATE] [--open] [--notify]
+  timelens.py process              label every queued minute now (batch mode, for local models)
   timelens.py demo [DIR]           fill DIR with a synthetic week and render its reports (no API, no screen)
   timelens.py selftest
 
@@ -20,10 +21,11 @@ CONFIG = Path(os.environ.get("TIMELENS_CONFIG") or next(
 CFG = tomllib.loads(CONFIG.read_text())
 DATA = Path(os.environ.get("TIMELENS_DATA", Path.home() / "Library/Application Support/timelens"))
 DB = DATA / "log.sqlite"
+QUEUE = DATA / "queue"   # batch mode only: screenshots waiting to be labelled by a local model
 
 CATEGORIES = {k: " ".join(v.split()) for k, v in CFG["categories"].items()}
 PALETTE = ["#3b6fe0", "#6c8ff0", "#2fa58a", "#e0a020", "#9b6bd6", "#5bb4d6", "#8a8f98", "#e0566b", "#b9bdc4", "#c78a5b"]
-COLORS = dict(zip(CATEGORIES, PALETTE)) | {"private": "#5b5f66", "unclear": "#d7d9dd"}
+COLORS = dict(zip(CATEGORIES, PALETTE)) | {"private": "#5b5f66", "unclear": "#d7d9dd", "pending": "#c9cdd3"}
 FOCUS, INTENTIONAL = CFG["report"]["focus"], CFG["report"]["intentional"]
 DISTRACTIONS = CFG["report"].get("distractions", [])
 
@@ -137,10 +139,11 @@ def build_request(app, title, url, jpeg, cfg=None):
 
 def call(body, cfg=None, key=None):
     cfg = cfg or CFG
-    key = key or subprocess.run(["security", "find-generic-password", "-s", cfg["keychain_service"], "-w"],
-                                capture_output=True, text=True, check=True).stdout.strip()
+    if key is None and cfg.get("keychain_service"):  # local servers need no key
+        key = subprocess.run(["security", "find-generic-password", "-s", cfg["keychain_service"], "-w"],
+                             capture_output=True, text=True, check=True).stdout.strip()
     req = urllib.request.Request(cfg["api_url"], json.dumps(body).encode(), {
-        "Authorization": f"Bearer {key}", "Content-Type": "application/json", "TypeSafe-Danger-Zone-Images": "true"})
+        "Authorization": f"Bearer {key or ''}", "Content-Type": "application/json", "TypeSafe-Danger-Zone-Images": "true"})
     try:
         with urllib.request.urlopen(req, timeout=30) as r:
             return json.load(r)
@@ -159,7 +162,15 @@ def sample(con, dry_run=False, verbose=False):
     url = browser_url(bundle)
     if bundle in CFG["privacy"]["apps"] or any(w in (url or "") for w in CFG["privacy"]["url_words"]):
         return con.execute("insert or replace into samples(ts, status, app) values(?, 'private', ?)", (ts, app))
-    body = build_request(app, title, url, screenshot(wid) if wid and CFG.get("screenshots", True) else None)
+    jpeg = screenshot(wid) if wid and CFG.get("screenshots", True) else None
+    if CFG.get("processing") == "batch" and not dry_run:  # local model: queue now, label later while you're away
+        QUEUE.mkdir(mode=0o700, parents=True, exist_ok=True)
+        (QUEUE / f"{ts}.json").write_text(json.dumps({"app": app, "bundle": bundle, "title": title, "url": url}))
+        if jpeg:
+            (QUEUE / f"{ts}.jpg").write_bytes(jpeg)
+        return con.execute("insert or replace into samples(ts, status, app, bundle, title, url) values(?, 'queued', ?, ?, ?, ?)",
+                           (ts, app, bundle, title, url))
+    body = build_request(app, title, url, jpeg)
     if verbose or dry_run:
         shown = json.loads(json.dumps(body))
         for a in shown.get("assets", {}).values():
@@ -173,12 +184,48 @@ def sample(con, dry_run=False, verbose=False):
         print(f"{datetime.now():%F %T} api error: {e}", file=sys.stderr)
         return con.execute("insert or replace into samples(ts, status, app, bundle, title, url) values(?, 'error', ?, ?, ?, ?)",
                            (ts, app, bundle, title, url))
-    a = r["answers"]
     if verbose:
         print(json.dumps(r, indent=2))
+    store(con, ts, app, bundle, title, url, r)
+
+
+def store(con, ts, app, bundle, title, url, r):
+    a = r["answers"]
     con.execute("insert or replace into samples values(?, 'ok', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
                 (ts, app, bundle, title, url, a["activity"]["choice"], a["activity"]["confidence"],
-                 a["project"]["choice"], a["project"]["confidence"], json.dumps(a), r["usage"]["input_tokens"]))
+                 a["project"]["choice"], a["project"]["confidence"], json.dumps(a), r.get("usage", {}).get("input_tokens")))
+
+
+def process_queue(con, limit=None):
+    """Label queued minutes (batch mode), oldest first. Each screenshot is deleted as soon as its minute is labelled."""
+    done = 0
+    for meta in sorted(QUEUE.glob("*.json"))[:limit]:
+        m, jpg = json.loads(meta.read_text()), meta.with_suffix(".jpg")
+        try:
+            r = call(build_request(m["app"], m["title"], m["url"], jpg.read_bytes() if jpg.exists() else None))
+        except Exception as e:
+            print(f"{datetime.now():%F %T} queue: {e!r}", file=sys.stderr)
+            break
+        store(con, int(meta.stem), m["app"], m["bundle"], m["title"], m["url"], r)
+        con.commit()
+        meta.unlink()
+        jpg.unlink(missing_ok=True)
+        done += 1
+    return done
+
+
+def good_time_to_process():
+    """You've been away for a while, or it's inside the window you chose (e.g. "12:30-14:00")."""
+    import Quartz
+    idle = Quartz.CGEventSourceSecondsSinceLastEventType(Quartz.kCGEventSourceStateHIDSystemState, 0xFFFFFFFF)
+    if idle >= CFG.get("batch_idle_minutes", 10) * 60:
+        return True
+    window = CFG.get("batch_window", "")
+    if "-" not in window:
+        return False
+    start, end = window.split("-")
+    now = datetime.now().strftime("%H:%M")
+    return start <= now < end if start < end else (now >= start or now < end)  # windows may cross midnight
 
 
 def run():
@@ -188,6 +235,8 @@ def run():
         try:
             sample(con)
             con.commit()
+            if CFG.get("processing") == "batch" and good_time_to_process():
+                process_queue(con, CFG.get("batch_per_minute", 4))
         except Exception as e:  # never die; launchd would restart us anyway
             print(f"{datetime.now():%F %T} {e!r}", file=sys.stderr)
         time.sleep(max(1, CFG["interval_seconds"] - (time.time() - t0)))
@@ -208,7 +257,8 @@ def day_minutes(con, d):
         n += 1
         tokens += tok or 0
         private += status == "private"
-        label = "private" if status == "private" else act if status == "ok" and conf >= CFG["min_confidence"] else "unclear"
+        label = ("private" if status == "private" else "pending" if status == "queued"
+                 else act if status == "ok" and conf >= CFG["min_confidence"] else "unclear")
         mins[i] = (label, proj or "none")
     return mins, tokens, n, private
 
@@ -295,6 +345,8 @@ def delta(now, past, fmt, good_up=True):
     if past is None:
         return ""
     d = now - past
+    if abs(d) < 0.5:
+        return '<div class="d">same as {ref}</div>'
     cls = "up" if (d >= 0) == good_up else "down"
     return f'<div class="d {cls}">{fmt(d)} vs. {{ref}}</div>'
 
@@ -411,42 +463,48 @@ def presets():
     return tomllib.loads((ROOT / "presets.toml").read_text())["preset"]
 
 
-def use_preset(preset_id):
-    """Point the report code at a preset's categories (used by the demo and the self-test)."""
+def use_categories(cats):
+    """Point the report code at a list of {name, kind} categories (demo, preview, self-test)."""
     global CATEGORIES, COLORS, FOCUS, INTENTIONAL, DISTRACTIONS
-    cats = next(p for p in presets() if p["id"] == preset_id)["category"]
-    CATEGORIES = {c["name"]: c["description"] for c in cats}
-    COLORS = dict(zip(CATEGORIES, PALETTE)) | {"private": "#5b5f66", "unclear": "#d7d9dd"}
+    CATEGORIES = {c["name"]: c.get("description", "") for c in cats}
+    COLORS = dict(zip(CATEGORIES, PALETTE)) | {"private": "#5b5f66", "unclear": "#d7d9dd", "pending": "#c9cdd3"}
     FOCUS = [c["name"] for c in cats if c["kind"] == "focus"]
     INTENTIONAL = [c["name"] for c in cats if c["kind"] in ("focus", "neutral")]
     DISTRACTIONS = [c["name"] for c in cats if c["kind"] == "distraction"]
 
 
-def demo(out):
-    """Five weeks of an invented engineer's days (the 'deep_work' preset), rendered to HTML. No API, no screen."""
+def use_preset(preset_id):
+    use_categories(next(p for p in presets() if p["id"] == preset_id)["category"])
+
+
+def demo(out, cats=None, projects=None):
+    """Five weeks of invented days for any set of categories and projects, rendered to HTML. No API, no screen.
+    Without arguments: the 'deep_work' preset and an invented engineer's projects (used for the README images)."""
     import random
     global DATA, DB
-    use_preset("deep_work")
+    cats = cats or next(p for p in presets() if p["id"] == "deep_work")["category"]
+    projects = projects or ["pebble-api", "tidepool", "field-notes"]
+    use_categories(cats)
+    focus = FOCUS or [c["name"] for c in cats][:1]
+    neutral = [c["name"] for c in cats if c["kind"] == "neutral"] or focus
+    drift = DISTRACTIONS or neutral
     DATA, DB = Path(out), Path(out) / "log.sqlite"
     DATA.mkdir(parents=True, exist_ok=True)
     DB.unlink(missing_ok=True)
     con, rnd = db(), random.Random(7)
     last_monday = date.today() - timedelta(days=date.today().weekday() + 7)  # last full week, plus 4 weeks of history
-    blocks = {  # (category, project, typical minutes)
-        "morning": [("planning", "none", 15), ("messages", "none", 25), ("reviewing", "pebble-api", 20)],
-        "deep": [("deep_work", "pebble-api", 95), ("deep_work", "tidepool", 60),
-                 ("deep_work", "field-notes", 70), ("deep_work", "pebble-api", 50)],
-        "afternoon": [("meetings", "pebble-api", 30), ("messages", "none", 20), ("reviewing", "tidepool", 45),
-                      ("deep_work", "tidepool", 40), ("planning", "none", 25)],
-    }
+    deep = [(focus[i % len(focus)], projects[i % len(projects)], m) for i, m in enumerate((95, 60, 70, 50))]
+    morning = [(neutral[i % len(neutral)], "none", m) for i, m in enumerate((15, 25, 20))]
+    afternoon = [(neutral[0], projects[0], 30), (neutral[-1], "none", 20), (focus[0], projects[-1], 45),
+                 (focus[-1], projects[1 % len(projects)], 40), (neutral[len(neutral) // 2], "none", 25)]
     for d in range(35):
         day = last_monday - timedelta(days=28) + timedelta(days=d)
         if day.weekday() == 6:
             continue
         t = datetime.combine(day, datetime.min.time()).timestamp() + (8 * 60 + rnd.randint(40, 80)) * 60
-        plan = blocks["morning"] + rnd.sample(blocks["deep"], 4) + ["lunch"] + rnd.sample(blocks["afternoon"], 5)
-        if day.weekday() == 5:  # Saturday: a little writing, a lot of drifting
-            plan = [("distractions", "none", 25), ("deep_work", "field-notes", 80), ("distractions", "none", 30)]
+        plan = morning + rnd.sample(deep, 4) + ["lunch"] + rnd.sample(afternoon, 5)
+        if day.weekday() == 5:  # Saturday: a little side work, a lot of drifting
+            plan = [(drift[0], "none", 25), (focus[-1], projects[-1], 80), (drift[-1], "none", 30)]
         for b in plan:
             if b == "lunch":
                 t += rnd.randint(45, 70) * 60
@@ -454,8 +512,8 @@ def demo(out):
             cat, proj, mins = b
             for _ in range(max(5, int(mins * rnd.uniform(0.7, 1.3)))):
                 c, p = cat, proj
-                if cat not in ("meetings", "distractions") and rnd.random() < (0.03 if t % 86400 < 46800 else 0.07):
-                    c, p = rnd.choice([("distractions", "none"), ("messages", "none")])  # afternoons get choppier
+                if cat not in drift and rnd.random() < (0.03 if t % 86400 < 46800 else 0.07):
+                    c, p = rnd.choice([(rnd.choice(drift), "none"), (neutral[0], "none")])  # afternoons get choppier
                 con.execute("insert or replace into samples values(?, 'ok', 'demo', 'demo', '', NULL, ?, ?, ?, 0.8, '{}', 2350)",
                             (int(t), c, rnd.uniform(0.5, 0.99), p))
                 t += 60
@@ -500,6 +558,8 @@ if __name__ == "__main__":
             notify(m, d.weekday() == 6)
         if "--open" in args:
             subprocess.run(["open", path])
+    elif cmd == "process":  # label everything still queued (batch mode), now
+        print(f"labelled {process_queue(db())} queued minutes")
     elif cmd == "selftest":
         selftest()
     elif cmd == "demo":

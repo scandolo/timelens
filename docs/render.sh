@@ -29,6 +29,8 @@ for scheme in light dark; do
   shot $scheme 860 640 setup-goal "http://127.0.0.1:8766/#preset=deep_work&step=0"
   shot $scheme 1120 980 setup-categories "http://127.0.0.1:8766/#preset=deep_work&step=1"
   shot $scheme 860 640 setup-agent "http://127.0.0.1:8766/#preset=deep_work&step=2&tab=agent"
+  shot $scheme 860 760 setup-model "http://127.0.0.1:8766/#preset=deep_work&step=3"
+  shot $scheme 1120 1000 setup-preview "http://127.0.0.1:8766/#preset=deep_work&step=6"
 done
 for scheme in light dark; do  # the hero embeds the day screenshot, so render it after
   shot $scheme 1280 640 hero file://$PWD/docs/src/hero.html

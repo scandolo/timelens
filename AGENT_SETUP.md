@@ -43,3 +43,5 @@ Write one JSON file to `agent-context.json` in the timelens folder (the folder t
 - Never put secrets, keys, email addresses, phone numbers or other people's personal details in the file.
 - Write the file only once, when it's complete. Then tell the person to look at the setup page: it fills itself in,
   and they can edit everything before saving.
+- If you can't write files (a chat-only assistant, for example), print the JSON in a single code block instead and
+  tell the person to paste it into the setup page under "Agent can't write files?".

@@ -4,7 +4,7 @@
 Runs on http://127.0.0.1:8766 and only talks to this Mac (plus one test request to the model you choose).
 `./install.sh` starts it; you can rerun it any time to change your setup.
 """
-import json, os, plistlib, subprocess, sys, threading, time, tomllib, webbrowser
+import json, os, plistlib, subprocess, sys, tempfile, threading, time, tomllib, webbrowser
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 
@@ -15,13 +15,23 @@ AGENTS = Path.home() / "Library/LaunchAgents"
 PORT = 8766
 DRY_RUN = bool(os.environ.get("TIMELENS_DRY_RUN"))  # walk through setup without touching the Keychain or launchd
 
-MODELS = {  # what the setup page offers; any System One / Decisions model works if you edit the config by hand
-    "perplexity": {"label": "Perplexity Decider v1.2 via OpenRouter", "api_url": "https://openrouter.ai/api/alpha/decisions",
-                   "model": "perplexity/pplx-decider-v1.2", "provider": "Perplexity", "price_per_mtok": 0.020,
-                   "keychain_service": "timelens-openrouter", "key_url": "https://openrouter.ai/settings/keys"},
-    "jev": {"label": "TypeSafe Jev 1.14", "api_url": "https://api.typesafe.ai/v1/systemone", "model": "jev-1.14.0",
-            "provider": "", "price_per_mtok": 0.042, "keychain_service": "timelens-typesafe",
-            "key_url": "https://console.typesafe.ai"},
+PROVIDERS = {  # what the setup page offers; any System One / Decisions endpoint works if you edit the config by hand
+    "openrouter": {
+        "label": "OpenRouter", "blurb": "One key, several decision models",
+        "api_url": "https://openrouter.ai/api/alpha/decisions", "keychain_service": "timelens-openrouter",
+        "models": [
+            {"id": "perplexity/pplx-decider-v1.2", "label": "Perplexity Decider v1.2", "pin": "Perplexity", "price": 0.020, "note": "recommended"},
+            {"id": "typesafe/jev-1.14", "label": "TypeSafe Jev 1.14", "pin": "TypeSafe", "price": 0.042, "note": "fastest"},
+            {"id": "cloudflare/clef-flash", "label": "Cloudflare Clef-flash", "pin": "Cloudflare", "price": 0.038, "note": "open weights"},
+        ]},
+    "typesafe": {
+        "label": "TypeSafe", "blurb": "Jev, straight from its makers",
+        "api_url": "https://api.typesafe.ai/v1/systemone", "keychain_service": "timelens-typesafe",
+        "models": [{"id": "jev-1.14.0", "label": "TypeSafe Jev 1.14", "pin": "", "price": 0.042, "note": ""}]},
+    "local": {
+        "label": "On this Mac", "blurb": "Nothing leaves your Mac. Labels minutes while you're away",
+        "api_url": "http://127.0.0.1:8000/v1/systemone", "keychain_service": "",
+        "models": [{"id": "clef-flash-oQ3e", "label": "Cloudflare Clef-flash (5.5 GB, via oMLX)", "pin": "", "price": 0, "note": "experimental"}]},
 }
 DEFAULT_PRIVATE_APPS = ["com.apple.Passwords", "com.apple.keychainaccess", "com.1password.1password",
                         "com.bitwarden.desktop", "com.dashlane.dashlanephonefinal"]
@@ -53,12 +63,16 @@ def toml_str(v):
 
 def build_config(c):
     """The choices from the page -> a config dict (same shape timelens.py reads)."""
-    m = MODELS[c["model"]]
+    prov = PROVIDERS[c["provider"]]
+    m = next(x for x in prov["models"] if x["id"] == c["model"])
     cats = [x for x in c["categories"] if x["name"].strip()]
     return {
-        **{k: m[k] for k in ("api_url", "model", "provider", "keychain_service", "price_per_mtok")},
+        "api_url": prov["api_url"], "model": m["id"], "provider": m["pin"], "keychain_service": prov["keychain_service"],
+        "price_per_mtok": m["price"],
         "interval_seconds": 60, "screenshots": bool(c["screenshots"]), "idle_minutes": 5, "min_confidence": 0.25,
         "report_time": c["report_time"] or "19:00",
+        "processing": "batch" if c["provider"] == "local" else "live",
+        "batch_window": c.get("batch_window", "") if c["provider"] == "local" else "", "batch_idle_minutes": 10,
         "about": c["about"].strip(),
         "categories": {x["name"].strip(): x["description"].strip() for x in cats},
         "examples": {x["name"].strip(): x["example"].strip() for x in cats if x.get("example", "").strip()},
@@ -73,7 +87,8 @@ def build_config(c):
 def write_config(cfg):
     lines = ["# Written by the timelens setup page. Rerun ./install.sh to change it, or edit by hand.", ""]
     for k in ("api_url", "model", "provider", "keychain_service", "price_per_mtok", "interval_seconds",
-              "screenshots", "idle_minutes", "min_confidence", "report_time"):
+              "screenshots", "idle_minutes", "min_confidence", "report_time", "processing", "batch_window",
+              "batch_idle_minutes"):
         v = cfg[k]
         lines.append(f"{k} = {str(v).lower() if isinstance(v, bool) else toml_str(v) if isinstance(v, str) else v}")
     lines += [f"about = {toml_str(cfg['about'])}", "", "[categories]"]
@@ -115,13 +130,16 @@ def install_agents(report_time):
 
 def test_key(c, key):
     """One text-only request with the user's own categories, to prove the key and the categories work."""
-    os.environ["TIMELENS_CONFIG"] = str(ROOT / "config.toml")  # timelens needs some config to import; we pass ours
-    sys.path.insert(0, str(ROOT))
-    import timelens
+    timelens = load_timelens()
     cfg = build_config(c)
     body = timelens.build_request("Safari", "Inbox (3) - Gmail", "https://mail.google.com/mail/u/0/#inbox", None, cfg)
     t0 = time.time()
-    r = timelens.call(body, cfg, key)
+    try:
+        r = timelens.call(body, cfg, key)
+    except OSError as e:
+        if cfg["api_url"].startswith("http://127.0.0.1") and "refused" in str(e).lower():
+            raise RuntimeError("Can't reach the model server on 127.0.0.1:8000. Is oMLX running? Press ? for the steps.")
+        raise
     a = r["answers"]["activity"]
     return {"choice": a["choice"], "confidence": round(a["confidence"], 2), "seconds": round(time.time() - t0, 1)}
 
@@ -145,6 +163,26 @@ def status():
     return out
 
 
+def load_timelens():
+    os.environ.setdefault("TIMELENS_CONFIG", str(ROOT / "config.toml"))  # timelens needs some config to import
+    sys.path.insert(0, str(ROOT))
+    import timelens
+    return timelens
+
+
+PREVIEW = Path(tempfile.mkdtemp(prefix="timelens-preview-"))
+
+
+def preview(c, projects):
+    """A made-up week drawn with the user's own categories and projects, so they see their report before day one."""
+    timelens = load_timelens()
+    cats = [{"name": x["name"], "kind": x["kind"], "description": x["description"]} for x in c["categories"] if x["name"]]
+    timelens.demo(PREVIEW, cats, (projects or list(c.get("known", {})) or ["project-a", "project-b"])[:4])
+    reports = sorted((PREVIEW / "reports").glob("*.html"))
+    day = next(r for r in reports if not r.name.startswith("week"))
+    return {"day": f"/preview/{day.name}", "week": f"/preview/{next(r for r in reports if r.name.startswith('week')).name}"}
+
+
 PAGE = (ROOT / "onboarding.html").read_text
 
 
@@ -164,7 +202,7 @@ class Handler(BaseHTTPRequestHandler):
             return self.reply(PAGE().encode(), ctype="text/html; charset=utf-8")
         if self.path == "/api/state":
             existing = tomllib.loads(LOCAL.read_text()) if LOCAL.exists() else None
-            return self.reply({"presets": presets(), "models": MODELS, "existing": existing, "dry_run": DRY_RUN,
+            return self.reply({"presets": presets(), "providers": PROVIDERS, "existing": existing, "dry_run": DRY_RUN,
                                "root": str(ROOT),
                                "home": str(Path.home()), "python": python_path()})
         if self.path == "/api/agent-context":  # written by the user's coding agent, see AGENT_SETUP.md
@@ -172,6 +210,9 @@ class Handler(BaseHTTPRequestHandler):
             return self.reply(json.loads(f.read_text()) if f.exists() else {})
         if self.path == "/api/status":
             return self.reply(status())
+        if self.path.startswith("/preview/"):  # the report preview built from the user's own categories
+            f = PREVIEW / "reports" / Path(self.path).name
+            return self.reply(f.read_bytes(), ctype="text/html; charset=utf-8") if f.is_file() else self.reply({}, 404)
         self.reply({"error": "not found"}, 404)
 
     def do_POST(self):
@@ -185,10 +226,12 @@ class Handler(BaseHTTPRequestHandler):
                 cfg = build_config(req["config"])
                 write_config(cfg)
                 if not DRY_RUN:
-                    if req.get("key"):
+                    if req.get("key") and cfg["keychain_service"]:
                         store_key(cfg["keychain_service"], req["key"])
                     install_agents(cfg["report_time"])
                 return self.reply({"ok": True, "python": python_path(), "dry_run": DRY_RUN, "config": str(LOCAL)})
+            if self.path == "/api/preview":
+                return self.reply(preview(req["config"], req.get("projects") or []))
             if self.path == "/api/open-settings":
                 subprocess.run(["open", "x-apple.systempreferences:com.apple.preference.security?Privacy_ScreenCapture"])
                 return self.reply({"ok": True})

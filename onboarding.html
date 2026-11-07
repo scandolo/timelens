@@ -1,67 +1,67 @@
 <!doctype html><html lang="en"><head><meta charset="utf-8"><title>Set up timelens</title>
 <meta name="viewport" content="width=device-width,initial-scale=1"><style>
-:root{--bg:#fafafa;--fg:#17181a;--muted:#6b6f76;--card:#fff;--border:#e3e5e8;--track:#eef0f2;--hover:#f3f4f6;--accent:#3b6fe0;--accent-soft:#e8eefc;--good:#1f9d62;--bad:#d4443f;--bad-soft:#fbe9e8;--warn:#b7791f}
-@media (prefers-color-scheme:dark){:root{--bg:#0e0f11;--fg:#ecedef;--muted:#8d929a;--card:#16181b;--border:#2a2d31;--track:#23262a;--hover:#1d2023;--accent-soft:#1c2740;--good:#3fc485;--bad:#f06a63;--bad-soft:#3a1d1c;--warn:#e0a020}}
+:root{--bg:#fafafa;--fg:#17181a;--muted:#6b6f76;--card:#fff;--border:#e3e5e8;--track:#eef0f2;--field:#f4f5f7;--accent:#3b6fe0;--accent-soft:#e8eefc;--good:#1f9d62;--bad:#d4443f;--warn:#b7791f}
+@media (prefers-color-scheme:dark){:root{--bg:#0e0f11;--fg:#ecedef;--muted:#8d929a;--card:#16181b;--border:#2a2d31;--track:#23262a;--field:#1d2024;--accent-soft:#1c2740;--good:#3fc485;--bad:#f06a63;--warn:#e0a020}}
 *{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--fg);font:15px/1.5 -apple-system,BlinkMacSystemFont,"SF Pro Text",sans-serif}
 .wrap{max-width:760px;margin:0 auto;padding:40px 20px 80px}.wrap.wide{max-width:1080px}
 header{display:flex;align-items:center;gap:12px;margin-bottom:32px}header img{width:36px;height:36px}header b{font-size:19px;letter-spacing:-.01em}
-.steps{display:flex;gap:6px;margin-left:auto}.steps i{width:28px;height:4px;border-radius:2px;background:var(--track)}.steps i.on{background:var(--accent)}
+.steps{display:flex;gap:6px;margin-left:auto}.steps i{width:24px;height:4px;border-radius:2px;background:var(--track)}.steps i.on{background:var(--accent)}
 h1{font-size:28px;letter-spacing:-.02em;margin:0 0 6px}p.lead{color:var(--muted);margin:0 0 24px}
 svg.i{width:20px;height:20px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round;flex:none}
-.tile{width:40px;height:40px;border-radius:10px;background:var(--track);display:grid;place-items:center;flex:none}
+.tile{width:36px;height:36px;border-radius:9px;background:var(--track);display:grid;place-items:center;flex:none}
 .card{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:16px;margin-bottom:10px}
-/* goals */
-.goals{display:grid;grid-template-columns:1fr 1fr;gap:12px}
-.goal{display:flex;gap:14px;align-items:center;cursor:pointer;margin:0;padding:16px;transition:border-color .15s,background .15s}
-.goal:hover{border-color:var(--muted)}.goal.on{border-color:var(--accent);box-shadow:0 0 0 1px var(--accent)}.goal.on .tile{background:var(--accent);color:#fff}
-.goal b{display:block;font-size:15px;line-height:1.3;color:var(--fg)}.goal .aud{display:block;font-size:13px;color:var(--muted)}
-/* categories */
-.cats{padding:6px 0}.cats .head,.cat{display:grid;grid-template-columns:40px minmax(0,1.25fr) minmax(0,1fr) 250px 22px;gap:14px;align-items:start;padding:12px 18px}
-.cats .head{font-size:12px;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;padding-bottom:4px}
+.opt{display:flex;gap:14px;align-items:center;cursor:pointer;padding:12px 16px;margin-bottom:8px;transition:border-color .15s}
+.opt:hover{border-color:var(--muted)}.opt.on{border-color:var(--accent);box-shadow:0 0 0 1px var(--accent)}.opt.on .tile{background:var(--accent);color:#fff}
+.opt b{font-weight:600}.opt .aud{color:var(--muted);font-size:14px;margin-left:8px}
+.cats{padding:6px 0}.cats .head,.cat{display:grid;grid-template-columns:36px minmax(0,1.3fr) minmax(0,1fr) 250px 22px;gap:14px;align-items:start;padding:12px 18px}
+.cats .head{font-size:12px;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;padding-bottom:0}
 .cat+.cat{border-top:1px solid var(--border)}
-.ghost{font:inherit;color:inherit;background:transparent;border:1px solid transparent;border-radius:8px;padding:4px 8px;width:100%;resize:none;overflow:hidden;display:block}
-.ghost:hover{background:var(--hover)}.ghost:focus{background:var(--bg);border-color:var(--accent);outline:none}
-.ghost.name{font-weight:600}.ghost.desc{color:var(--muted);font-size:14px;margin-top:2px}.ghost.ex{font-size:14px}
-.ghost.ex::placeholder{color:var(--muted)}
+.field{font:inherit;color:inherit;background:var(--field);border:1px solid transparent;border-radius:8px;padding:6px 10px;width:100%;resize:none;overflow:hidden;display:block}
+.field:hover{border-color:var(--border)}.field:focus{border-color:var(--accent);outline:none;background:var(--bg)}
+.field.name{font-weight:600;background:transparent;padding-left:0;border-color:transparent}.field.name:focus{padding-left:10px}
+.field.desc{font-size:14px;margin-top:4px}.field.ex{font-size:14px}.field::placeholder{color:var(--muted);opacity:.8}
 .pills{display:inline-flex;background:var(--track);border-radius:9px;padding:3px;gap:2px;margin-top:2px}
 .pills button{border:0;background:none;padding:5px 10px;border-radius:7px;font-size:13px;color:var(--muted)}
 .pills button.on{background:var(--card);color:var(--fg);box-shadow:0 1px 2px rgba(0,0,0,.12)}
 .pills button.on.focus{background:var(--accent);color:#fff}.pills button.on.distraction{background:var(--bad);color:#fff}
 .catchall{font-size:13px;color:var(--muted);padding-top:8px}
-/* forms */
-input,textarea,select{font:inherit;color:inherit;background:var(--bg);border:1px solid var(--border);border-radius:10px;padding:9px 12px;width:100%}
+input,textarea{font:inherit;color:inherit;background:var(--field);border:1px solid var(--border);border-radius:10px;padding:9px 12px;width:100%}
 textarea{resize:vertical}input:focus,textarea:focus{outline:2px solid var(--accent);outline-offset:-1px}
-label.f{display:block;font-weight:600;margin:20px 0 6px}label.f small{font-weight:400;color:var(--muted)}
+label.f{display:flex;align-items:center;gap:8px;font-weight:600;margin:22px 0 8px}
 .row{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
 button{font:inherit;border:1px solid var(--border);background:var(--card);color:var(--fg);border-radius:10px;padding:9px 16px;cursor:pointer}
 button.primary{background:var(--accent);border-color:var(--accent);color:#fff;font-weight:600}button:disabled{opacity:.45;cursor:default}
 button.x{padding:6px 0;border:0;background:none;color:var(--muted);font-size:18px;line-height:1}button.x:hover{color:var(--bad)}
+button.q{width:24px;height:24px;padding:0;border-radius:50%;font-size:13px;font-weight:700;color:var(--muted);display:grid;place-items:center}
 button.add{display:flex;gap:8px;align-items:center;margin-top:4px}
 .nav{display:flex;justify-content:space-between;margin-top:32px}
 .hint{font-size:13px;color:var(--muted)}.ok{color:var(--good)}.err{color:var(--bad)}.warn{color:var(--warn)}
-.tabs{display:inline-flex;background:var(--track);border-radius:12px;padding:4px;gap:4px;margin-bottom:8px}
+.tabs{display:inline-flex;background:var(--track);border-radius:12px;padding:4px;gap:4px;margin-bottom:12px}
 .tabs button{border:0;background:none;display:flex;gap:8px;align-items:center;color:var(--muted);border-radius:9px;padding:8px 14px}
 .tabs button.on{background:var(--card);color:var(--fg);box-shadow:0 1px 2px rgba(0,0,0,.12)}
-.prompt{display:flex;gap:10px;align-items:center;background:var(--track);border-radius:10px;padding:12px 14px;font:14px ui-monospace,monospace;margin:12px 0}
+.prompt{display:flex;gap:10px;align-items:center;background:var(--track);border-radius:10px;padding:12px 14px;font:14px ui-monospace,monospace;margin:10px 0}
 .prompt span{flex:1;word-break:break-word}
-.pulse{display:inline-block;width:8px;height:8px;border-radius:50%;background:var(--accent);margin-right:8px;animation:p 1.4s infinite}
-@keyframes p{50%{opacity:.25}}
-.banner{display:flex;gap:10px;align-items:center;background:var(--accent-soft);border-radius:10px;padding:10px 14px;margin:8px 0 4px;font-size:14px}
-.projs{margin-top:8px}.proj{display:grid;grid-template-columns:28px 220px 1fr;gap:10px;align-items:center;padding:6px 0;border-top:1px solid var(--border)}
-.proj:first-child{border-top:0}.proj code{background:none;padding:0}
+.pulse{display:inline-block;width:8px;height:8px;border-radius:50%;background:var(--accent);margin-right:8px;animation:p 1.4s infinite}@keyframes p{50%{opacity:.25}}
+.banner{display:flex;gap:10px;align-items:center;background:var(--accent-soft);border-radius:10px;padding:10px 14px;margin:0 0 12px;font-size:14px}
+.proj{display:grid;grid-template-columns:24px 220px 1fr;gap:10px;align-items:center;padding:6px 0}.proj+.proj{border-top:1px solid var(--border)}
 code{font:13px ui-monospace,monospace;background:var(--track);padding:2px 6px;border-radius:5px;word-break:break-all}
+.proj code{background:none;padding:0}
+.toggle{display:flex;gap:12px;align-items:flex-start;cursor:pointer}.toggle input{width:auto;margin-top:4px}
 .live td{padding:6px 10px 6px 0;font-size:14px;border-top:1px solid var(--border)}.live{width:100%;border-collapse:collapse}
-ol.todo{padding-left:20px}ol.todo li{margin:8px 0}
-@media (max-width:860px){.goals{grid-template-columns:1fr}.cats .head{display:none}.cat{grid-template-columns:40px 1fr 22px}.cat>.exw,.cat>.kw{grid-column:2}.proj{grid-template-columns:28px 1fr}.proj input{grid-column:2}}
+ol.todo{padding-left:0;list-style:none;counter-reset:s;margin:0}ol.todo li{counter-increment:s;display:flex;gap:12px;align-items:flex-start;padding:10px 0}
+ol.todo li::before{content:counter(s);flex:none;width:24px;height:24px;border-radius:50%;background:var(--track);display:grid;place-items:center;font-size:13px;font-weight:600}
+.frame{width:100%;height:760px;border:1px solid var(--border);border-radius:14px;background:var(--bg)}
+.modal{position:fixed;inset:0;background:rgba(0,0,0,.45);display:grid;place-items:center;padding:20px;z-index:9}
+.modal .card{max-width:520px;width:100%;padding:24px;margin:0}.modal ol{padding-left:20px;margin:12px 0}.modal li{margin:8px 0}
+@media (max-width:860px){.cats .head{display:none}.cat{grid-template-columns:36px 1fr 22px}.cat>.exw,.cat>.kw{grid-column:2}.proj{grid-template-columns:24px 1fr}.proj input{grid-column:2}.opt .aud{display:block;margin:0}}
 </style></head><body><div class="wrap">
 <header><img src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%2314161a'/%3E%3Cg transform='translate(9 28)'%3E%3Crect width='10' height='8' rx='2' fill='%233b6fe0'/%3E%3Crect x='12' width='6' height='8' rx='2' fill='%232fa58a'/%3E%3Crect x='20' width='4' height='8' rx='2' fill='%23e0566b'/%3E%3Crect x='26' width='9' height='8' rx='2' fill='%236c8ff0'/%3E%3Crect x='37' width='9' height='8' rx='2' fill='%23e0a020'/%3E%3C/g%3E%3Ccircle cx='35' cy='32' r='13' fill='none' stroke='white' stroke-width='3.5'/%3E%3Cline x1='44.5' y1='41.5' x2='53' y2='50' stroke='white' stroke-width='4' stroke-linecap='round'/%3E%3C/svg%3E" alt=""><b>timelens</b><div class="steps" id="dots"></div></header>
-<main id="view"></main>
+<main id="view"></main><div id="modal"></div>
 </div><script>
 const $ = s => document.querySelector(s), esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const api = (path, body) => fetch(path, body ? {method: 'POST', body: JSON.stringify(body)} : {}).then(async r => { const j = await r.json(); if (!r.ok) throw new Error(j.error); return j });
 
-// line icons, 24x24, drawn with currentColor
-const ICONS = {
+const ICONS = {  // line icons, 24x24, drawn with currentColor
   compass: '<circle cx="12" cy="12" r="9"/><path d="m15.5 8.5-2.2 4.8-4.8 2.2 2.2-4.8z"/>',
   briefcase: '<rect x="3" y="7" width="18" height="13" rx="2"/><path d="M9 7V5.5A1.5 1.5 0 0 1 10.5 4h3A1.5 1.5 0 0 1 15 5.5V7M3 13h18"/>',
   target: '<circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="5"/><circle cx="12" cy="12" r="1"/>',
@@ -85,76 +85,122 @@ const ICONS = {
   bot: '<rect x="4" y="8" width="16" height="12" rx="3"/><path d="M12 4v4M9 14h.01M15 14h.01"/>',
   user: '<circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0 1 16 0"/>',
   folder: '<path d="M3 6a1 1 0 0 1 1-1h5l2 2h9a1 1 0 0 1 1 1v10a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1z"/>',
+  cloud: '<path d="M7 18a4.5 4.5 0 0 1-.6-9 6 6 0 0 1 11.5 1.5A3.8 3.8 0 0 1 17.5 18z"/>',
+  key: '<circle cx="8" cy="15" r="4"/><path d="m11 12 9-9M17 6l3 3M14 9l2 2"/>',
+  laptop: '<rect x="4" y="5" width="16" height="11" rx="1.5"/><path d="M2 19h20"/>',
   plus: '<path d="M12 5v14M5 12h14"/>', copy: '<rect x="9" y="9" width="12" height="12" rx="2"/><path d="M5 15V5a2 2 0 0 1 2-2h10"/>',
   check: '<path d="m5 12 5 5L20 7"/>',
 };
 const icon = n => `<svg class="i" viewBox="0 0 24 24">${ICONS[n] || ICONS.tag}</svg>`;
-const guessIcon = name => [[/client|work$|^work/, 'briefcase'], [/own|personal|side|build/, 'sprout'], [/deep|focus/, 'target'], [/message|comm|chat|email/, 'chat'],
+const guessIcon = name => [[/client|^work/, 'briefcase'], [/own|personal|side|build/, 'sprout'], [/deep|focus/, 'target'], [/message|comm|chat|email/, 'chat'],
   [/meet|call/, 'video'], [/learn|study|read|course/, 'book'], [/plan|admin|calendar/, 'calendar'], [/review/, 'eye'], [/social|feed/, 'phone'],
   [/video|youtube|stream/, 'play'], [/news/, 'news'], [/shop/, 'bag'], [/down|distract|break|fun/, 'coffee'], [/other/, 'dots']].find(([re]) => re.test(name))?.[1] || 'tag';
+const PROVIDER_ICONS = {openrouter: 'cloud', typesafe: 'key', local: 'laptop'};
+const GUIDES = {
+  openrouter: {title: 'Get an OpenRouter key', link: 'https://openrouter.ai/settings/keys', steps: [
+    'Create an account at <a href="https://openrouter.ai" target="_blank">openrouter.ai</a>.',
+    'Add a little credit under <b>Settings → Credits</b>. At about two cents a day, $5 lasts for months.',
+    'Open <b>Settings → Keys</b>, click <b>Create key</b> and copy it. It starts with <code>sk-or-</code>.',
+    'Paste it here and press <b>Test</b>.']},
+  typesafe: {title: 'Get a TypeSafe key', link: 'https://console.typesafe.ai', steps: [
+    'Sign up at <a href="https://console.typesafe.ai" target="_blank">console.typesafe.ai</a>.',
+    'Open <b>API keys</b> and create a key.',
+    'Paste it here and press <b>Test</b>.']},
+  local: {title: 'Run the model on this Mac', link: 'https://github.com/jundot/omlx', steps: [
+    'Install oMLX, a local model server: <code>brew install jundot/omlx/omlx</code>, or download the app from <a href="https://github.com/jundot/omlx/releases" target="_blank">its releases page</a>.',
+    'In oMLX, download <code>Jundot/clef-flash-oQ3e</code> (about 5.5 GB; best with 16 GB of memory or more).',
+    'Start the server. It listens on <code>127.0.0.1:8000</code>.',
+    'Press <b>Test</b> here. From then on, screenshots wait in a private folder, get labelled when you step away, and are deleted.'],
+    note: 'Experimental: this path hasn\'t been tested end to end yet.'},
+};
 
-let S, step = 0, tested = null, poll, agentPoll, contextTab = 'self', agentFilled = false;
-const C = {preset: null, categories: [], about: '', dirs: [], known: {}, model: 'perplexity', key: '', screenshots: true, report_time: '19:00'};
+let S, step = 0, tested = null, poll, agentPoll, contextTab = 'self', agentFilled = false, previewTab = 'day', previewUrls = null, installed = null;
+const C = {preset: null, categories: [], about: '', dirs: [], known: {}, provider: 'openrouter', model: 'perplexity/pplx-decider-v1.2', key: '',
+           screenshots: true, report_time: '19:00', batch_window: '12:30-14:00'};
 const KINDS = [['focus', 'Focus'], ['neutral', 'Neutral'], ['distraction', 'Distraction']];
+const nav = (next = 'Continue', action = 'go(1)') => `<div class="nav"><button ${step ? '' : 'disabled'} onclick="go(-1)">Back</button><button class="primary" id="next" onclick="${action}">${next}</button></div>`;
 
 const steps = [
   { // 1. goal
-    render: () => `<h1>What do you want to find out?</h1><p class="lead">Pick the closest goal. You can change everything on the next screens.</p>
-      <div class="goals">${S.presets.map(p => `<label class="card goal ${C.preset === p.id ? 'on' : ''}" onclick="pick('${p.id}')" title="${esc(p.blurb)}">
-        <span class="tile">${icon(p.icon)}</span><span><b>${esc(p.title)}</b><span class="aud">${esc(p.audience)}</span></span></label>`).join('')}
-      ${S.existing ? `<label class="card goal ${C.preset === 'existing' ? 'on' : ''}" onclick="pick('existing')"><span class="tile">${icon('check')}</span><span><b>Keep my current setup</b><span class="aud">Start from what you already have</span></span></label>` : ''}</div>`,
+    render: () => `<h1>What do you want to find out?</h1><p class="lead">Pick the closest goal. You can change everything next.</p>
+      ${S.presets.map(p => `<div class="card opt ${C.preset === p.id ? 'on' : ''}" onclick="pick('${p.id}')" title="${esc(p.blurb)}">
+        <span class="tile">${icon(p.icon)}</span><span><b>${esc(p.title)}</b><span class="aud">${esc(p.audience)}</span></span></div>`).join('')}
+      ${S.existing ? `<div class="card opt ${C.preset === 'existing' ? 'on' : ''}" onclick="pick('existing')"><span class="tile">${icon('check')}</span><span><b>Keep my current setup</b></span></div>` : ''}` + nav(),
     ok: () => !!C.preset },
   { // 2. categories
     wide: true,
-    render: () => `<h1>Your categories</h1><p class="lead">Each minute goes into exactly one. Describe what you'd <i>see</i> on screen; the model can't read your mind.</p>
-      <div class="card cats"><div class="head"><span></span><span>Category</span><span>Real-life example</span><span>Counts as</span><span></span></div>
+    render: () => `<h1>Your categories</h1><p class="lead">Each minute goes into exactly one. Describe what it looks like on screen.</p>
+      <div class="card cats"><div class="head"><span></span><span>Category</span><span>Your example <span style="text-transform:none">(optional)</span></span><span>Counts as</span><span></span></div>
       ${C.categories.map((c, i) => `<div class="cat">
         <span class="tile">${icon(c.icon || guessIcon(c.name))}</span>
-        <div><input class="ghost name" value="${esc(c.name)}" ${c.kind === 'none' ? 'disabled' : ''} aria-label="Name"
+        <div><input class="field name" value="${esc(c.name)}" ${c.kind === 'none' ? 'disabled' : ''} aria-label="Name"
               oninput="C.categories[${i}].name=this.value.trim().toLowerCase().replace(/[^a-z0-9_]+/g,'_')">
-          <textarea class="ghost desc" rows="1" aria-label="What it looks like" placeholder="What it looks like on screen"
+          <textarea class="field desc" rows="1" aria-label="What it looks like" placeholder="What it looks like on screen"
               oninput="C.categories[${i}].description=this.value">${esc(c.description)}</textarea></div>
-        <div class="exw"><textarea class="ghost ex" rows="1" aria-label="Example" placeholder="e.g. something you'd do"
+        <div class="exw"><textarea class="field ex" rows="1" aria-label="Example" placeholder="${esc(c.hint ? 'e.g. ' + c.hint : 'e.g. something you do')}"
               oninput="C.categories[${i}].example=this.value">${esc(c.example)}</textarea></div>
-        <div class="kw">${c.kind === 'none' ? '<div class="catchall">Catch-all, always last</div>' : `<div class="pills" role="radiogroup">${KINDS.map(([k, l]) =>
+        <div class="kw">${c.kind === 'none' ? '<div class="catchall">Catch-all</div>' : `<div class="pills">${KINDS.map(([k, l]) =>
           `<button class="${k} ${c.kind === k ? 'on' : ''}" onclick="C.categories[${i}].kind='${k}';draw()">${l}</button>`).join('')}</div>`}</div>
         ${c.kind === 'none' ? '<span></span>' : `<button class="x" title="Remove" onclick="C.categories.splice(${i},1);draw()">×</button>`}
       </div>`).join('')}</div>
       <button class="add" onclick="C.categories.splice(C.categories.length-1,0,{name:'new_category',description:'',example:'',kind:'neutral',icon:'tag'});draw()">${icon('plus')} Add a category</button>
-      <p class="hint" style="margin-top:14px"><b>Focus</b> builds your focus blocks. <b>Distraction</b> counts as drifting away. You need at least one Focus category.</p>`,
+      <p class="hint" style="margin-top:14px">You need at least one <b>Focus</b> category. <b>Distraction</b> counts as drifting away.</p>` + nav(),
     ok: () => C.categories.some(c => c.kind === 'focus') && C.categories.every(c => c.name && c.description.trim()) },
   { // 3. context
-    render: () => `<h1>Tell it about your work</h1><p class="lead">A few sentences and your project folders, sent with every minute so it can tell your projects apart.</p>
+    render: () => `<h1>About your work</h1><p class="lead">Helps the model tell your projects apart.</p>
       <div class="tabs"><button class="${contextTab === 'self' ? 'on' : ''}" onclick="tab('self')">${icon('user')} I'll write it</button>
-        <button class="${contextTab === 'agent' ? 'on' : ''}" onclick="tab('agent')">${icon('bot')} My coding agent writes it</button></div>
+        <button class="${contextTab === 'agent' ? 'on' : ''}" onclick="tab('agent')">${icon('bot')} My agent writes it</button></div>
       ${contextTab === 'agent' ? `<div class="card">
-          <b>Paste this into Claude Code, Codex, Cursor or any coding agent:</b>
+          <b>Paste this into any AI agent</b> <span class="hint">Claude Code, Codex, Cursor, Gemini CLI…</span>
           <div class="prompt"><span id="prompt">Read ${esc(S.root)}/AGENT_SETUP.md and follow it to fill in my timelens context.</span>
             <button onclick="copyPrompt(this)" title="Copy">${icon('copy')}</button></div>
-          <p class="hint">It looks through your project folders, may ask you a question or two, and writes a small file in this folder. Nothing leaves your Mac.</p>
-          <p><span class="pulse"></span>Waiting for your agent…</p></div>`
-      : `${agentFilled ? `<div class="banner">${icon('bot')} Your agent filled this in. Review it and change anything that's off.</div>` : ''}
+          <p style="margin:6px 0 14px"><span class="pulse"></span>Waiting for your agent…</p>
+          <details><summary class="hint" style="cursor:pointer">Agent can't write files? Paste its answer here</summary>
+            <textarea id="pasted" rows="4" style="margin-top:8px" placeholder='{"about": "…", "known": {…}}'></textarea>
+            <button style="margin-top:8px" onclick="applyPasted()">Use this</button> <span id="pasteout" class="hint"></span></details></div>`
+      : `${agentFilled ? `<div class="banner">${icon('bot')} Filled in by your agent. Check it over.</div>` : ''}
         <label class="f">About you</label><textarea rows="3" oninput="C.about=this.value" placeholder="${esc(preset()?.about_hint || 'What you do and what you work on.')}">${esc(C.about)}</textarea>
-        <label class="f">Project folders <small>each subfolder becomes a project</small></label>
-        <div class="row"><input id="dirs" style="flex:1" value="${esc(C.dirs.join(', '))}" placeholder="~/code"><button onclick="scan()">Find projects</button></div>
-        <div id="projects">${projectsHtml()}</div>`}`,
+        <label class="f">Project folders</label>
+        <div class="row"><input id="dirs" style="flex:1" value="${esc(C.dirs.join(', '))}" placeholder="~/code"><button onclick="scan()">Find</button></div>
+        <div id="projects">${projectsHtml()}</div>`}` + nav(),
     ok: () => true, enter: () => scan(true) },
   { // 4. model and key
-    render: () => { const m = S.models[C.model]; return `<h1>Connect a model</h1><p class="lead">One request a minute to the model you pick, about two cents a day.</p>
-      ${Object.entries(S.models).map(([id, x]) => `<label class="card goal ${C.model === id ? 'on' : ''}" onclick="C.model='${id}';tested=null;draw()"><span class="tile">${icon(id === 'perplexity' ? 'compass' : 'target')}</span>
-        <span><b>${esc(x.label)}</b><span class="aud">$${x.price_per_mtok} per million tokens${id === 'perplexity' ? ' · recommended' : ''}</span></span></label>`).join('')}
-      <label class="f">API key <small><a href="${m.key_url}" target="_blank">get one</a> · kept in your macOS Keychain</small></label>
-      <div class="row"><input type="password" id="key" style="flex:1" value="${esc(C.key)}" placeholder="${S.existing ? 'leave empty to keep your saved key' : 'paste your key'}" oninput="C.key=this.value;tested=null"><button onclick="test()">Test it</button></div>
-      <p id="testout" class="hint">${tested ? `<span class="ok">✓ Works.</span> A sample Gmail inbox was filed as <b>${esc(tested.choice)}</b> (${tested.confidence}) in ${tested.seconds}s.` : 'Sends one text-only request with your categories, so you see a real answer first.'}</p>
-      <label class="f">Daily report at</label><input type="time" value="${C.report_time}" style="width:140px" oninput="C.report_time=this.value">
-      <label class="f"><input type="checkbox" style="width:auto" ${C.screenshots ? 'checked' : ''} onchange="C.screenshots=this.checked"> Include a screenshot of the front window</label>
-      <p class="hint">Off means only the app, window title and web address are sent: cheaper, more private, less accurate in chat apps. Screenshots are deleted a second after sending.</p>` },
+    render: () => { const p = S.providers[C.provider]; return `<h1>Connect a model</h1><p class="lead">Where each minute gets labelled.</p>
+      ${Object.entries(S.providers).map(([id, x]) => `<div class="card opt ${C.provider === id ? 'on' : ''}" onclick="setProvider('${id}')">
+        <span class="tile">${icon(PROVIDER_ICONS[id])}</span><span><b>${esc(x.label)}</b><span class="aud">${esc(x.blurb)}</span></span></div>`).join('')}
+      ${p.models.length > 1 ? `<label class="f">Model</label>${p.models.map(m => `<label class="toggle" style="margin:6px 0"><input type="radio" name="m" ${C.model === m.id ? 'checked' : ''} onchange="C.model='${m.id}';tested=null;draw()">
+        <span>${esc(m.label)} <span class="hint">$${m.price}/M tokens${m.note ? ' · ' + m.note : ''}</span></span></label>`).join('')}` : ''}
+      <label class="f">${C.provider === 'local' ? 'Local server' : 'API key'} <button class="q" title="How do I get this?" onclick="guide()">?</button></label>
+      <div class="row">${C.provider === 'local' ? `<span class="hint" style="flex:1">oMLX on <code>127.0.0.1:8000</code></span>`
+        : `<input type="password" id="key" style="flex:1" value="${esc(C.key)}" placeholder="${S.existing ? 'leave empty to keep your saved key' : 'paste your key'}" oninput="C.key=this.value;tested=null">`}
+        <button onclick="test()">Test</button></div>
+      <p id="testout" class="hint">${tested ? `<span class="ok">✓ Works.</span> A sample Gmail inbox came back as <b>${esc(tested.choice)}</b> in ${tested.seconds}s.` : ''}</p>` + nav() },
     ok: () => !!tested },
-  { // 5. start
-    render: () => `${S.dry_run ? '<div class="banner warn">Preview mode: this step saves your choices but installs nothing.</div>' : ''}<h1>Start tracking</h1><p class="lead">Saves your setup, puts your key in the Keychain and starts a background process that wakes once a minute.</p>
-      <div class="card"><b>${C.categories.length} categories</b> · ${esc(S.models[C.model].label)} · report at ${C.report_time} · screenshots ${C.screenshots ? 'on' : 'off'}</div>
-      <div id="after"><button class="primary" onclick="install()">Start tracking</button> <span id="installout" class="hint"></span></div>`,
-    ok: () => false },
+  { // 5. preferences, then install
+    render: () => `${S.dry_run ? '<div class="banner warn">Preview mode: nothing will be installed.</div>' : ''}<h1>A few preferences</h1><p class="lead">You can change these any time.</p>
+      <label class="f">Daily report at</label><input type="time" value="${C.report_time}" style="width:140px" oninput="C.report_time=this.value">
+      ${C.provider === 'local' ? `<label class="f">Also label queued minutes between</label>
+        <input value="${esc(C.batch_window)}" style="width:180px" placeholder="12:30-14:00" oninput="C.batch_window=this.value">
+        <p class="hint">Queued minutes are labelled whenever you've been away for 10 minutes, and during this window.</p>` : ''}
+      <label class="f toggle" style="font-weight:400"><input type="checkbox" ${C.screenshots ? 'checked' : ''} onchange="C.screenshots=this.checked">
+        <span><b>Include a screenshot</b><br><span class="hint">Off sends only the app, window title and address. Cheaper and more private, less accurate in chat apps.</span></span></label>
+      <span id="installout" class="hint"></span>` + nav('Start tracking', 'install()'),
+    ok: () => true },
+  { // 6. permissions
+    render: () => `<h1>One permission</h1><p class="lead">macOS needs to let timelens see the front window.</p>
+      <div class="card"><ol class="todo">
+        <li><span><button onclick="api('/api/open-settings',{})">Open Screen &amp; System Audio Recording</button></span></li>
+        <li><span>Click <b>+</b>, press <b>⌘⇧G</b>, paste this path and click <b>Open</b>:<br><code id="py">${esc(installed?.python)}</code>
+          <button style="margin-top:6px" onclick="navigator.clipboard.writeText($('#py').textContent);this.textContent='Copied'">Copy path</button></span></li>
+        <li><span>Turn its switch on, then <button onclick="api('/api/restart',{});this.textContent='Restarted'">restart timelens</button></span></li></ol></div>
+      <div id="live" class="hint">${S.dry_run ? 'Preview mode: nothing is running, so there are no minutes to show.' : 'Waiting for the first minute…'}</div>` + nav('See my report'),
+    ok: () => true, enter: () => { if (!S.dry_run) { poll = setInterval(live, 5000); live(); } } },
+  { // 7. preview
+    wide: true,
+    render: () => `<h1>Here's what you'll get</h1><p class="lead">An invented week, drawn with your categories and projects. Your real one arrives at ${C.report_time}.</p>
+      <div class="tabs"><button class="${previewTab === 'day' ? 'on' : ''}" onclick="previewTab='day';draw()">Day</button><button class="${previewTab === 'week' ? 'on' : ''}" onclick="previewTab='week';draw()">Week</button></div>
+      ${previewUrls ? `<iframe class="frame" src="${previewUrls[previewTab]}"></iframe>` : '<p class="hint">Drawing your preview…</p>'}` + nav('Done', "finish()"),
+    ok: () => true, enter: async () => { previewUrls = await api('/api/preview', {config: C, projects: Object.values(found).flat().filter(Boolean)}); draw(); } },
 ];
 
 const preset = () => S.presets.find(p => p.id === C.preset);
@@ -166,17 +212,25 @@ function pick(id) {
     C.categories = Object.entries(e.categories).map(([name, description]) => ({name, description, example: ex[name] || '', kind: kind(name)}));
     if (!C.categories.some(c => c.kind === 'none')) C.categories.push({name: 'other', description: 'None of the above.', example: '', kind: 'none'});
     C.categories.sort((a, b) => (a.kind === 'none') - (b.kind === 'none'));
-    Object.assign(C, {about: e.about || '', dirs: e.projects?.dirs || [], known: e.projects?.known || {}, screenshots: e.screenshots !== false, report_time: e.report_time || '19:00'});
-    C.model = Object.keys(S.models).find(k => S.models[k].model === e.model) || 'perplexity';
-  } else C.categories = structuredClone(preset().category);
+    const prov = /openrouter/.test(e.api_url) ? 'openrouter' : /typesafe/.test(e.api_url) ? 'typesafe' : 'local';
+    Object.assign(C, {about: e.about || '', dirs: e.projects?.dirs || [], known: e.projects?.known || {}, screenshots: e.screenshots !== false,
+      report_time: e.report_time || '19:00', provider: prov, model: e.model, batch_window: e.batch_window || C.batch_window});
+  } else C.categories = preset().category.map(c => ({...c, hint: c.example, example: ''}));  // examples are optional: shown as hints
   draw();
+}
+function setProvider(id) { C.provider = id; C.model = S.providers[id].models[0].id; tested = null; draw() }
+function guide() {
+  const g = GUIDES[C.provider];
+  $('#modal').innerHTML = `<div class="modal" onclick="if(event.target===this)this.remove()"><div class="card"><h2 style="margin:0 0 4px">${g.title}</h2>
+    <ol>${g.steps.map(s => `<li>${s}</li>`).join('')}</ol>${g.note ? `<p class="hint warn">${g.note}</p>` : ''}
+    <div class="nav" style="margin-top:16px"><a href="${g.link}" target="_blank"><button>Open ${new URL(g.link).hostname}</button></a><button class="primary" onclick="$('#modal').innerHTML=''">Got it</button></div></div></div>`;
 }
 let found = {};
 function projectsHtml() {
   const names = Object.values(found).filter(Boolean).flat();
   if (!names.length) return '';
-  return `<p class="hint" style="margin-top:12px">Found ${names.length} projects. One line each helps, especially for client work.</p><div class="card projs">${names.map(n =>
-    `<div class="proj"><span class="hint">${icon('folder')}</span><code>${esc(n)}</code><input class="ghost" placeholder="What is it? e.g. Client: Acme's website" value="${esc(C.known[n] || '')}" data-n="${esc(n)}" oninput="C.known[this.dataset.n]=this.value"></div>`).join('')}</div>`;
+  return `<div class="card" style="margin-top:12px">${names.map(n =>
+    `<div class="proj"><span class="hint">${icon('folder')}</span><code>${esc(n)}</code><input class="field" placeholder="What is it? e.g. Client: Acme's site" value="${esc(C.known[n] || '')}" data-n="${esc(n)}" oninput="C.known[this.dataset.n]=this.value"></div>`).join('')}</div>`;
 }
 async function scan(quiet) {
   const el = $('#dirs'); if (el) C.dirs = el.value.split(/[,\n]/).map(s => s.trim()).filter(Boolean);
@@ -186,64 +240,54 @@ async function scan(quiet) {
   if ($('#projects')) $('#projects').innerHTML = projectsHtml();
 }
 function copyPrompt(b) { navigator.clipboard.writeText($('#prompt').textContent); b.innerHTML = icon('check') }
+function useAgentContext(a) {
+  Object.assign(C, {about: a.about || C.about, dirs: a.dirs || C.dirs, known: {...C.known, ...(a.known || {})}});
+  agentFilled = true; tab('self'); scan();
+}
+function applyPasted() {
+  const t = $('#pasted').value, j = t.slice(t.indexOf('{'), t.lastIndexOf('}') + 1);
+  try { useAgentContext(JSON.parse(j)) } catch { $('#pasteout').innerHTML = '<span class="err">That doesn\'t look like the JSON block. Copy everything between the braces.</span>' }
+}
 function tab(t) {
   contextTab = t; clearInterval(agentPoll);
-  if (t === 'agent') agentPoll = setInterval(async () => {
-    const a = await api('/api/agent-context');
-    if (!a.about && !a.known) return;
-    Object.assign(C, {about: a.about || C.about, dirs: a.dirs || C.dirs, known: {...C.known, ...(a.known || {})}});
-    agentFilled = true; tab('self'); scan();
-  }, 3000);
+  if (t === 'agent') agentPoll = setInterval(async () => { const a = await api('/api/agent-context'); if (a.about || a.known) useAgentContext(a) }, 3000);
   draw();
 }
 async function test() {
-  C.key = $('#key').value.trim(); $('#testout').innerHTML = 'Testing…';
+  if ($('#key')) C.key = $('#key').value.trim();
+  $('#testout').innerHTML = 'Testing…';
   try { tested = await api('/api/test', {config: C, key: C.key || null}); draw() }
   catch (e) { $('#testout').innerHTML = `<span class="err">That didn't work: ${esc(e.message)}</span>` }
 }
 async function install() {
   $('#installout').textContent = 'Setting up…';
-  try { const r = await api('/api/install', {config: C, key: C.key || null}); r.dry_run ? afterDryRun(r) : afterInstall(r.python) }
+  try { installed = await api('/api/install', {config: C, key: C.key || null}); go(1) }
   catch (e) { $('#installout').innerHTML = `<span class="err">${esc(e.message)}</span>` }
 }
-function finish(msg) { api('/api/done', {}); $('#view').innerHTML = `<h1>${msg}</h1><p class="lead">You can close this tab.</p>` }
-function afterDryRun(r) {
-  $('#after').innerHTML = `<div class="card"><b class="ok">✓ Preview finished.</b> Your setup was saved to <code>${esc(r.config)}</code>.
-    In preview mode nothing goes into the Keychain and no background process starts. A real run would now ask you to allow this file under Screen Recording:<br><code>${esc(r.python)}</code></div>
-    <div class="nav"><span></span><button class="primary" onclick="finish('That was the whole setup.')">Done</button></div>`;
-}
-function afterInstall(py) {
-  $('#after').innerHTML = `<div class="card"><b class="ok">✓ Running.</b> One permission left, so timelens can see the front window:
-    <ol class="todo"><li><button onclick="api('/api/open-settings',{})">Open Screen Recording settings</button></li>
-    <li>Click <b>+</b>, press <b>⌘⇧G</b>, paste this path and click Open: <br><code id="py">${esc(py)}</code> <button onclick="navigator.clipboard.writeText($('#py').textContent);this.textContent='Copied'">Copy</button></li>
-    <li>Turn its switch on, then <button onclick="api('/api/restart',{});this.textContent='Restarted'">restart timelens</button></li></ol></div>
-    <h3>Live: the last few minutes</h3><div id="live" class="hint">Waiting for the first minute…</div>
-    <div class="nav"><button onclick="api('/api/report',{})">Open today's report</button><button class="primary" onclick="finish('All set. Your first report arrives at ${C.report_time}.')">Done</button></div>`;
-  poll = setInterval(live, 5000); live();
-}
+function finish() { api('/api/done', {}); $('#view').innerHTML = `<h1>All set.</h1><p class="lead">You can close this tab. Your first report arrives at ${C.report_time}.</p>` }
 async function live() {
   const s = await api('/api/status'); if (!$('#live')) return clearInterval(poll);
   const rows = s.samples.map(r => `<tr><td>${new Date(r.ts * 1000).toLocaleTimeString([], {hour: '2-digit', minute: '2-digit'})}</td><td>${esc(r.app || '')}</td>
     <td><b>${esc(r.status === 'ok' ? r.activity : r.status)}</b>${r.confidence ? ` <span class="hint">${r.confidence.toFixed(2)}</span>` : ''}</td><td>${esc(r.project && r.project !== 'none' ? r.project : '')}</td></tr>`).join('');
-  $('#live').innerHTML = (s.needs_permission ? '<p class="warn">Screenshots are being blocked: finish the permission step above, then restart timelens.</p>' : '')
-    + (rows ? `<table class="live">${rows}</table>` : 'Waiting for the first minute…');
+  $('#live').innerHTML = (s.needs_permission ? '<p class="warn">Screenshots are still blocked. Finish the steps above, then restart timelens.</p>' : '')
+    + (rows ? `<b>Last few minutes</b><table class="live">${rows}</table>` : 'Waiting for the first minute…');
 }
 function draw() {
   $('#dots').innerHTML = steps.map((_, i) => `<i class="${i <= step ? 'on' : ''}"></i>`).join('');
   const s = steps[step];
   $('.wrap').classList.toggle('wide', !!s.wide);
-  $('#view').innerHTML = s.render() + (step < steps.length - 1 ? `<div class="nav"><button ${step ? '' : 'disabled'} onclick="go(-1)">Back</button><button class="primary" id="next" onclick="go(1)">Continue</button></div>` : `<div class="nav"><button onclick="go(-1)">Back</button><span></span></div>`);
+  $('#view').innerHTML = s.render();
   const fit = t => { t.style.height = 'auto'; t.style.height = t.scrollHeight + 2 + 'px' };
-  document.querySelectorAll('textarea.ghost').forEach(fit);
+  document.querySelectorAll('textarea.field').forEach(fit);
   const n = $('#next');
-  document.oninput = e => { if (e.target.matches('textarea.ghost')) fit(e.target); if (n) n.disabled = !steps[step].ok(); };
+  document.oninput = e => { if (e.target.matches('textarea.field')) fit(e.target); if (n) n.disabled = !steps[step].ok(); };
   if (n) n.disabled = !s.ok();
 }
-function go(d) { if (step === 2 && contextTab === 'self') scan(); clearInterval(agentPoll); step += d; draw(); steps[step].enter?.() }
+function go(d) { if (step === 2 && contextTab === 'self') scan(); clearInterval(agentPoll); clearInterval(poll); step += d; draw(); steps[step].enter?.() }
 api('/api/state').then(s => {
   S = s; if (S.existing) pick('existing');
   const h = new URLSearchParams(location.hash.slice(1));  // #preset=clients&step=1&tab=agent opens a given screen (used for docs screenshots)
-  if (h.get('preset')) { pick(h.get('preset')); step = +(h.get('step') || 0); contextTab = h.get('tab') || 'self'; }
+  if (h.get('preset')) { pick(h.get('preset')); step = +(h.get('step') || 0); contextTab = h.get('tab') || 'self'; if (h.get('provider')) setProvider(h.get('provider')); }
   draw(); steps[step].enter?.();
 });
 </script></body></html>

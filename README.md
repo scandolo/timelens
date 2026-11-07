@@ -81,11 +81,13 @@ git clone https://github.com/scandolo/timelens && cd timelens
 
 That opens a short setup page in your browser:
 
-1. **Pick a goal.** Each one comes with a starting set of categories: an overview of your day, clients versus your own projects, deep work, distractions, or studying.
-2. **Edit the categories.** Rename them, describe what each one looks like on screen, give a real-life example, and mark which count as focus and which as distraction.
-3. **Add context.** A few sentences about what you do, and the folders where your projects live; each subfolder becomes a project the model can recognise. Or hand this step to your coding agent: the page gives you one line to paste into Claude Code, Codex or Cursor, the agent reads your project folders (following [`AGENT_SETUP.md`](AGENT_SETUP.md)), and the page fills itself in for you to review.
-4. **Connect a model and test it.** Paste your key and press *Test it*: one text-only request comes back with a real answer before anything runs in the background. The key goes into your macOS Keychain.
-5. **Start tracking**, then grant Screen Recording. The page gives you the exact file to allow and shows the first minutes being labelled as they arrive.
+1. **Pick a goal**: an overview of your day, clients versus your own projects, deep work, distractions, or studying. Each comes with starting categories.
+2. **Edit the categories.** Rename them, describe what each looks like on screen, add your own example if you like, and mark each one as focus, neutral or distraction.
+3. **Add context**: a few sentences about your work and the folders where your projects live. Or let an AI agent write it: the page gives you one line to paste into Claude Code, Codex, Cursor or any other agent, which follows [`AGENT_SETUP.md`](AGENT_SETUP.md). Agents that can write files fill the page in by themselves; chat-only assistants give you a block to paste back.
+4. **Connect a model**: OpenRouter (Perplexity Decider, Jev or Clef-flash with one key), TypeSafe (Jev directly), or a model running on your own Mac. Each has a **?** guide to getting set up, and *Test* sends one real request before anything runs.
+5. **Preferences**: when the daily report arrives, and whether to include screenshots. Then *Start tracking*.
+6. **Permission**: the page opens the right System Settings pane, gives you the exact file to allow, and shows the first minutes being labelled.
+7. **Preview**: an invented week drawn with your own categories and projects, so you see your report before day one.
 
 <table>
 <tr>
@@ -97,12 +99,17 @@ That opens a short setup page in your browser:
 </td>
 <td width="50%">
 <picture>
-  <source media="(prefers-color-scheme: dark)" srcset="docs/images/setup-categories-dark.png">
-  <img alt="Setup: edit your categories" src="docs/images/setup-categories-light.png">
+  <source media="(prefers-color-scheme: dark)" srcset="docs/images/setup-model-dark.png">
+  <img alt="Setup: connect a model" src="docs/images/setup-model-light.png">
 </picture>
 </td>
 </tr>
 </table>
+
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="docs/images/setup-categories-dark.png">
+  <img alt="Setup: edit your categories" src="docs/images/setup-categories-light.png">
+</picture>
 
 Run `./install.sh` again whenever you want to change your setup; it starts from what you already have. Day to day you'll only need these:
 
@@ -126,8 +133,9 @@ Here is everything that happens to what timelens sees.
 | The model's answer | Stored locally: category, project, probabilities and token count. |
 | Minutes with a password manager or banking site in front | Logged as `private`. No screenshot is taken and no request is made. |
 | Idle or locked minutes | Logged as `away`. |
+| **On-this-Mac mode only:** screenshots waiting to be labelled | Kept in a private folder (`~/Library/Application Support/timelens/queue`, readable only by you) until the local model labels them, usually when you step away. Each one is deleted as soon as its minute is labelled. Nothing is sent over the network. |
 
-The one request per minute goes to the provider you chose during setup. The default pins OpenRouter to Perplexity with fallbacks switched off, so your screenshots can't be rerouted to whichever host is cheapest that minute. Read that provider's data policy before you install, or pick another one.
+In the cloud modes, the one request per minute goes to the provider you chose during setup. The default pins OpenRouter to Perplexity with fallbacks switched off, so your screenshots can't be rerouted to whichever host is cheapest that minute. Read that provider's data policy before you install, or pick another one.
 
 If you'd rather send no images at all, untick screenshots during setup (or set `screenshots = false`) and timelens works from the app, title and address alone. That's good enough for browsers and editors with descriptive titles, and noticeably worse inside chat apps.
 
@@ -158,7 +166,9 @@ The goal presets live in [`presets.toml`](presets.toml). A good preset for a use
 
 ## Pick the model you trust
 
-Any model that speaks the System One / Decisions format works. The setup page offers two; others take three lines in the config (`api_url`, `model`, `price_per_mtok`).
+Any model that speaks the System One / Decisions format works. The setup page offers three through OpenRouter, Jev directly from TypeSafe, and a local option; anything else takes three lines in the config (`api_url`, `model`, `price_per_mtok`).
+
+**On this Mac (experimental).** If no screen content may leave your machine, run a decision model locally with [oMLX](https://github.com/jundot/omlx) and the open-weights [`clef-flash-oQ3e`](https://huggingface.co/Jundot/clef-flash-oQ3e) (about 5.5 GB). A 9B model labelling every minute would slow your Mac down while you work, so timelens switches to a queue: it captures as usual, then labels queued minutes when you've been away for 10 minutes or during a window you choose (say, lunch). Run `.venv/bin/python timelens.py process` to label everything at once. This path hasn't been tested end to end yet.
 
 | Model | Input $/M tokens | Tokens per call* | $ per day* | Median latency* | Notes |
 |---|---|---|---|---|---|
