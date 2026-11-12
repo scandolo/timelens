@@ -12,8 +12,9 @@ interval_seconds = 60
 screenshots = true        # false = send only app, window title and URL (cheaper, more private, less accurate)
 idle_minutes = 5          # no input for this long = away (except during a meeting)
 min_confidence = 0.25     # answers below this show as "unclear" in reports
-nudges = true             # one notification after break_after_minutes at the laptop without 10 minutes away
+nudges = true             # a break reminder after break_after_minutes without 10 minutes away (sooner if focus frays)
 break_after_minutes = 120
+rewards = true            # a notification when you set a focus record or keep a focus streak going
 
 # Sent with every question so the model can tell your contexts apart. Name your projects and clients.
 about = "The person works on a Mac. Describe what you do and what you work on here."

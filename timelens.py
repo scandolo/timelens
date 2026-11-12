@@ -287,6 +287,7 @@ def run():
                 process_queue(con, 4)  # back online: catch up on minutes missed while offline, a few at a time
             recap(con)
             nudge(con)
+            reward(con)
             ask_new_project(con)
         except Exception as e:  # never die; launchd would restart us anyway
             print(f"{datetime.now():%F %T} {e!r}", file=sys.stderr)
@@ -314,9 +315,10 @@ def day_minutes(con, d):
     return mins, tokens, n, private
 
 
-def focus_block(mins):
-    """Longest run of 'work' on one project; interruptions of <=2 minutes don't break it, being away does."""
-    best, start, proj, last, gap = (0, None, None, None), None, None, None, 0
+def focus_blocks(mins):
+    """Every run of 'work' on one project, as (length, start, end, project); interruptions of <=2 minutes don't break
+    it, being away does."""
+    out, start, proj, last, gap = [], None, None, None, 0
     for i, m in enumerate(mins + [None]):
         is_work = m is not None and m[0] in FOCUS
         if start is not None and is_work and m[1] == proj:
@@ -325,10 +327,15 @@ def focus_block(mins):
         if start is not None and m is not None and not is_work and gap < 2:
             gap += 1
             continue
-        if start is not None and last - start + 1 > best[0]:
-            best = (last - start + 1, start, last, proj)
+        if start is not None:
+            out.append((last - start + 1, start, last, proj))
         start, proj, last, gap = (i, m[1], i, 0) if is_work else (None, None, None, 0)
-    return best
+    return out
+
+
+def focus_block(mins):
+    """The longest focus block (the first one, if two are as long)."""
+    return max(focus_blocks(mins), key=lambda b: b[0], default=(0, None, None, None))
 
 
 def metrics(mins):
@@ -513,13 +520,14 @@ def recap(con):
     yesterday = today - timedelta(days=1)
     path, m = report(yesterday, con)
     if m["active"]:
-        notify(m, yesterday.weekday() == 6, path)
+        notify(m, yesterday.weekday() == 6, path, rewards_line(con, yesterday))
 
 
-def notify(m, week, path):
+def notify(m, week, path, extra=""):
     """The headline as a notification that opens the report when clicked. When that can't be shown (no timelens.app,
     or notifications not allowed), a small dialog with an "Open report" button instead, so the recap is never lost."""
     title, text = f"timelens: {'last week' if week else 'yesterday'}", f"{dur(m['active'])} on the laptop · {m['intentional']:.0%} intentional"
+    text += f"\n{extra}" if extra else ""
     banner(title, text, path, fallback=lambda: subprocess.run(
         ["osascript", "-e", "on run argv", "-e", "activate", "-e",
          'set r to display dialog (item 1 of argv) with title (item 2 of argv) buttons {"Not now", "Open report"} '
@@ -665,6 +673,119 @@ def add_project(answer):
     tmp.replace(CONFIG)
     CFG["projects"].setdefault("known", {})[name] = desc  # the next minute's request includes it, no restart
     print(f"{datetime.now():%F %T} added project {name}", file=sys.stderr)
+
+
+# ---------- records and streaks ----------
+# Small rewards for focus (never for hours at the laptop, never for breaks): a notification the minute you beat a
+# personal record or keep a streak going, and a line in the morning recap. Each day's numbers are kept in
+# DATA/focus-days.json so the history is computed once, not every minute.
+
+DAYS = DATA / "focus-days.json"
+CELEBRATED = DATA / "celebrated"  # today's date, then the records and streaks already announced today
+RECORDS = {  # key: (what it's called, better = higher?, how to show it)
+    "block": ("longest focus block", True, dur), "focus": ("most focus in a day", True, dur),
+    "blocks25": ("most 25-min focus blocks in a day", True, str), "calm": ("calmest focus hour", False,
+                                                                           lambda n: f"{n} app switch{'es' * (n != 1)} in an hour")}
+
+
+def calmest_hour(con, d):
+    """Fewest app switches in 60 minutes at the Mac that were mostly (80%+) focus work, or None."""
+    start = datetime.combine(d, datetime.min.time()).timestamp()
+    slot = [None] * 1440
+    for ts, status, app, act in con.execute("select ts, status, app, activity from samples where ts >= ? and ts < ? "
+                                            "and status != 'away' order by ts", (start, start + 86400)):
+        slot[int((ts - start) // 60)] = (app, status == "ok" and act in FOCUS)
+    best = None
+    for i in range(1440 - 59):
+        w = [x for x in slot[i:i + 60] if x]
+        if len(w) >= 57 and sum(f for _, f in w) >= 48:  # a missed sample or three is fine, being away isn't
+            n = sum(a[0] != b[0] for a, b in zip(w, w[1:]))
+            best = n if best is None else min(best, n)
+    return best
+
+
+def day_stats(con, d):
+    mins = day_minutes(con, d)[0]
+    # across projects: project labels still flicker within one window, which would cut every block short
+    blocks = [b[0] for b in focus_blocks([(x[0], "") if x else None for x in mins])]
+    return {"active": sum(1 for x in mins if x), "focus": sum(1 for x in mins if x and x[0] in FOCUS),
+            "block": max(blocks, default=0), "blocks25": sum(b >= 25 for b in blocks), "calm": calmest_hour(con, d)}
+
+
+def history(con, before):
+    """{date: stats} for every day before `before` with time at the Mac; finished days are computed once."""
+    saved = json.loads(DAYS.read_text()) if DAYS.exists() else {}
+    first = con.execute("select min(ts) from samples").fetchone()[0]
+    d, changed = (date.fromtimestamp(first) if first else before), False
+    while d < before:
+        if str(d) not in saved:
+            saved[str(d)], changed = day_stats(con, d), True
+        d += timedelta(days=1)
+    if changed:
+        DAYS.write_text(json.dumps(saved))
+    return {date.fromisoformat(k): v for k, v in saved.items() if v["active"] and date.fromisoformat(k) < before}
+
+
+def bests(past):
+    return {k: (max if up else min)((s[k] for s in past.values() if s[k] is not None), default=None)
+            for k, (_, up, _) in RECORDS.items()}
+
+
+def streak_goals(past):
+    """The bars streaks are measured against: your usual focus (median of the last 14 days at the Mac, rounded down
+    to half an hour, at least an hour) and a focus block of an hour."""
+    recent = sorted(s["focus"] for d, s in past.items() if d >= max(past) - timedelta(days=13))
+    usual = max(60, recent[len(recent) // 2] // 30 * 30) if recent else 60
+    return {"focus": (usual, f"{dur(usual).replace(' 00', '')}+ of focus"), "block": (60, "a 1h+ focus block")}
+
+
+def streak(past, key, goal, today=None):
+    """Days in a row (days away from the Mac don't count either way) that met the goal, including today if it has."""
+    n = int(today is not None and today[key] >= goal)
+    for d in sorted(past, reverse=True):
+        if past[d][key] < goal:
+            break
+        n += 1
+    return n
+
+
+def news(past, today):
+    """What today (so far) has earned: new records and streaks, as {key: text}."""
+    if len(past) < 5:  # the first few days would all be records
+        return {}
+    out = {}
+    for k, best in bests(past).items():
+        name, up, show = RECORDS[k]
+        v = today[k]
+        if v is not None and best is not None and (v > best if up else v < best) and (k != "block" or v >= 25):
+            out[k] = f"New record, {name}: {show(v)}"
+    for k, (goal, what) in streak_goals(past).items():
+        n = streak(past, k, goal, today)
+        if today[k] >= goal and n >= 2:
+            out["streak-" + k] = f"{n} days in a row with {what}"
+    return out
+
+
+def reward(con):
+    """Once a minute: announce each new record or streak once, the minute it happens."""
+    if not CFG.get("rewards", True):
+        return
+    today = date.today()
+    seen = CELEBRATED.read_text().split() if CELEBRATED.exists() else []
+    seen = seen[1:] if seen[:1] == [str(today)] else []
+    fresh = {k: v for k, v in news(history(con, today), day_stats(con, today)).items() if k not in seen}
+    if fresh:
+        CELEBRATED.write_text(" ".join([str(today), *seen, *fresh]))
+        banner("timelens: nice focus", "\n".join(fresh.values()))
+
+
+def rewards_line(con, d):
+    """For the morning recap: the records day d set and the streaks it kept, in one short line."""
+    try:
+        return " · ".join(news(history(con, d), day_stats(con, d)).values())
+    except Exception as e:  # never lose the recap over this
+        print(f"{datetime.now():%F %T} rewards: {e!r}", file=sys.stderr)
+        return ""
 
 
 # ---------- presets, demo, self-check ----------

@@ -75,7 +75,7 @@ def build_config(c):
         "api_url": prov["api_url"], "model": m["id"], "provider": m["pin"], "keychain_service": prov["keychain_service"],
         "price_per_mtok": m["price"],
         "interval_seconds": 60, "screenshots": bool(c["screenshots"]), "idle_minutes": 5, "min_confidence": 0.25,
-        "nudges": True, "break_after_minutes": 120,
+        "nudges": True, "break_after_minutes": 120, "rewards": True,
         "processing": "batch" if c["provider"] == "local" else "live",
         "batch_window": c.get("batch_window", "") if c["provider"] == "local" else "", "batch_idle_minutes": 10,
         "about": c["about"].strip(),
@@ -93,7 +93,7 @@ def build_config(c):
 def write_config(cfg):
     lines = ["# Written by the timelens setup page. Rerun ./install.sh to change it, or edit by hand.", ""]
     for k in ("api_url", "model", "provider", "keychain_service", "price_per_mtok", "interval_seconds",
-              "screenshots", "idle_minutes", "min_confidence", "nudges", "break_after_minutes", "processing",
+              "screenshots", "idle_minutes", "min_confidence", "nudges", "break_after_minutes", "rewards", "processing",
               "batch_window", "batch_idle_minutes"):
         v = cfg[k]
         lines.append(f"{k} = {str(v).lower() if isinstance(v, bool) else toml_str(v) if isinstance(v, str) else v}")
