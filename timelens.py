@@ -6,6 +6,7 @@
   timelens sample [--dry-run]      one sample now; --dry-run prints the request and sends nothing
   timelens process                 label every queued minute now (on-this-Mac mode)
   timelens demo [DIR]              render an invented week, no API and no screen access
+  timelens mcp                     MCP server on stdin/stdout, so your agent can read the log (read-only)
   timelens selftest
   timelens run                     sample forever (launchd runs this for you)
 
@@ -680,6 +681,135 @@ def selftest():
     print("selftest ok")
 
 
+# ---------- MCP server ----------
+# `timelens mcp`: lets your own agent (Claude Code, Codex, Claude Desktop…) read the log. Stdio, newline-delimited
+# JSON-RPC, standard library only. Read-only: the log is opened with mode=ro and nothing is ever written.
+
+def span(a, b):
+    return {"start": hhmm(a), "end": hhmm(b + 1), "minutes": b - a + 1}
+
+
+def day_json(con, d):
+    mins = day_minutes(con, d)[0]
+    m, on = metrics(mins), [i for i, x in enumerate(mins) if x]
+    stretches = []  # runs of time at the Mac; 10+ minutes away is a break
+    for i in on:
+        if stretches and i - stretches[-1][1] <= 10:
+            stretches[-1][1] = i
+        else:
+            stretches.append([i, i])
+    start = datetime.combine(d, datetime.min.time()).timestamp()
+    rows = con.execute("select ts, status, app from samples where ts >= ? and ts < ? order by ts", (start, start + 86400)).fetchall()
+    hops = [ts for (_, s0, a0), (ts, s1, a1) in zip(rows, rows[1:]) if "away" not in (s0, s1) and a0 != a1]
+    length, s, e, p = m["block"]
+    return {"date": str(d), "minutes_at_laptop": m["active"],
+            "first_active": hhmm(on[0]) if on else None, "last_active": hhmm(on[-1]) if on else None,
+            "categories": dict(m["cats"].most_common()), "projects": dict(m["projects"].most_common()),
+            "longest_focus_block": {**span(s, e), "project": p} if length else None, "distraction_switches": m["switches"],
+            "intentional_share": round(m["intentional"], 3), "stretches_between_breaks": [span(a, b) for a, b in stretches],
+            "app_switches": len(hops), "app_switches_per_active_hour": round(len(hops) * 60 / m["active"], 1) if m["active"] else 0,
+            "app_switches_by_hour": dict(sorted(Counter(f"{datetime.fromtimestamp(t):%H}" for t in hops).items()))}
+
+
+def range_json(con, start, end):
+    a, b = date.fromisoformat(start), date.fromisoformat(end)
+    days = [a + timedelta(days=k) for k in range((b - a).days + 1)]
+    if not 0 < len(days) <= 92:
+        raise ValueError("end must be on or after start, and the range at most 92 days")
+    m = metrics([x for d in days for x in day_minutes(con, d)[0]])
+    return {"days": [day_json(con, d) for d in days], "totals": {
+        "minutes_at_laptop": m["active"], "categories": dict(m["cats"].most_common()), "projects": dict(m["projects"].most_common()),
+        "distraction_switches": m["switches"], "intentional_share": round(m["intentional"], 3)}}
+
+
+def minutes_json(con, start, end, app=None, activity=None, project=None, limit=500):
+    lo = datetime.fromisoformat(start).timestamp()
+    hi = datetime.fromisoformat(end).timestamp() + (86400 if len(end) == 10 else 0)  # a bare date includes that whole day
+    where, args = "ts >= ? and ts < ? and status != 'away'", [lo, hi]
+    for col, v in (("app", app and f"%{app}%"), ("activity", activity), ("project", project)):
+        if v:
+            where, args = where + f" and {col} {'like' if col == 'app' else '='} ?", args + [v]
+    total = con.execute(f"select count(*) from samples where {where}", args).fetchone()[0]
+    rows = con.execute(f"select ts, status, app, title, url, activity, activity_conf, project, project_conf from samples "
+                       f"where {where} order by ts limit ?", args + [max(1, min(int(limit), 5000))]).fetchall()
+    return {"columns": ["time", "status", "app", "title", "url", "activity", "activity_conf", "project", "project_conf"],
+            "rows": [[f"{datetime.fromtimestamp(r[0]):%F %H:%M}", *r[1:6], r[6] and round(r[6], 2), r[7], r[8] and round(r[8], 2)]
+                     for r in rows], "total": total, "truncated": total > len(rows)}
+
+
+def projects_json():
+    kinds = {"focus": FOCUS, "intentional": INTENTIONAL, "distraction": DISTRACTIONS}
+    return {"projects": projects(), "min_confidence": CFG["min_confidence"], "categories": {
+        c: {"description": v, "kinds": [k for k, cs in kinds.items() if c in cs]} for c, v in CATEGORIES.items()}}
+
+
+DATE = {"type": "string", "description": "YYYY-MM-DD, local time"}
+WHEN = {"type": "string", "description": "YYYY-MM-DD (whole day) or YYYY-MM-DDTHH:MM, local time"}
+TOOLS = {  # name: (function, description for the agent, properties, required)
+    "day": (lambda con, a: day_json(con, date.fromisoformat(a["date"])),
+            "The user's day as in their daily report: minutes at the laptop, first/last active minute, minutes per category "
+            "and per project, longest focus block, switches into distractions, intentional share, stretches between breaks "
+            "(a break is 10+ minutes away) and app switches. One minute = one sample; away minutes are not counted.",
+            {"date": DATE}, ["date"]),
+    "range": (lambda con, a: range_json(con, a["start"], a["end"]),
+              "The `day` numbers for every day from start to end (inclusive, at most 92 days), plus totals. "
+              "Use it for weeks, trends and comparing days.", {"start": DATE, "end": DATE}, ["start", "end"]),
+    "minutes": (lambda con, a: minutes_json(con, **a),
+                "Raw minute rows, away minutes left out: time, status (ok, error, private, queued), app, window title, URL, "
+                "and the model's activity and project with confidence. Use it to see what was on screen behind a total. "
+                "Filters: app (substring), activity and project (exact names from `projects`).",
+                {"start": WHEN, "end": WHEN, "app": {"type": "string"}, "activity": {"type": "string"},
+                 "project": {"type": "string"}, "limit": {"type": "integer", "default": 500, "maximum": 5000}}, ["start", "end"]),
+    "projects": (lambda con, a: projects_json(),
+                 "The user's categories (description, and kind: focus, intentional, distraction) and projects (description). "
+                 "Reports also show 'unclear' (answer below min_confidence), 'private' (password manager or bank, nothing "
+                 "captured) and 'pending' (not labelled yet). Call it first to know what the labels mean.", {}, []),
+}
+
+
+def rpc(method, p):
+    if method == "initialize":
+        v = p.get("protocolVersion")
+        return {"protocolVersion": v if v in ("2025-11-25", "2025-06-18", "2025-03-26", "2024-11-05") else "2025-11-25",
+                "capabilities": {"tools": {}}, "serverInfo": {"name": "timelens", "version": "0.3.0"},
+                "instructions": "The user's own timelens log: one row per minute at their Mac, labelled with their "
+                                "categories and projects. Read-only. Times are local."}
+    if method == "ping":
+        return {}
+    if method == "tools/list":
+        return {"tools": [{"name": n, "description": d, "annotations": {"readOnlyHint": True}, "inputSchema": {
+            "type": "object", "properties": s, "required": r, "additionalProperties": False}} for n, (_, d, s, r) in TOOLS.items()]}
+    if method == "tools/call" and p.get("name") in TOOLS:
+        from contextlib import closing
+        try:
+            if not DB.exists():
+                raise FileNotFoundError(f"no timelens log at {DB} yet: run `timelens setup` first")
+            with closing(sqlite3.connect(DB.as_uri() + "?mode=ro", uri=True)) as con:
+                return {"content": [{"type": "text", "text": json.dumps(
+                    TOOLS[p["name"]][0](con, p.get("arguments") or {}), separators=(",", ":"))}]}
+        except Exception as e:  # a bad date, no log yet: tell the agent and keep serving
+            return {"content": [{"type": "text", "text": f"{type(e).__name__}: {e}"}], "isError": True}
+    raise LookupError(-32602, f"Unknown tool: {p.get('name')}") if method == "tools/call" else \
+        LookupError(-32601, f"Method not found: {method}")
+
+
+def mcp():
+    out, sys.stdout = sys.stdout, sys.stderr  # stdout carries the protocol only; a stray print goes to stderr
+    for line in sys.stdin:
+        msg, reply = {}, None
+        try:
+            msg = json.loads(line)
+            if not isinstance(msg, dict) or "id" in msg:  # notifications (initialized, cancelled) get no answer
+                reply = {"result": rpc(msg.get("method"), msg.get("params") or {})}
+        except LookupError as e:
+            reply = {"error": {"code": e.args[0], "message": e.args[1]}}
+        except (ValueError, AttributeError):  # not JSON, or not one JSON object
+            msg, reply = {}, {"error": {"code": -32700, "message": "Parse error: send one JSON-RPC object per line"}}
+        if reply:
+            out.write(json.dumps({"jsonrpc": "2.0", "id": msg.get("id"), **reply}) + "\n")
+            out.flush()
+
+
 if __name__ == "__main__":
     cmd, args = (sys.argv[1] if len(sys.argv) > 1 else "run"), sys.argv[2:]
     if cmd == "run":
@@ -700,5 +830,7 @@ if __name__ == "__main__":
         selftest()
     elif cmd == "demo":
         demo(args[0] if args else tempfile.mkdtemp(prefix="timelens-demo-"))
+    elif cmd == "mcp":
+        mcp()
     else:
         print(__doc__)

@@ -113,6 +113,21 @@ git clone https://github.com/scandolo/timelens && cd timelens
 
 To pause, run `launchctl bootout gui/$UID/com.timelens.sampler` (`timelens setup` starts it again). To uninstall, delete `~/Library/LaunchAgents/com.timelens.*.plist` and `~/Library/Application Support/timelens`, then `brew uninstall timelens`.
 
+## Use it with your agent
+
+`timelens mcp` is a small local MCP server, so Claude Code, Codex, Claude Desktop or any other MCP client can answer questions like "where did my afternoons go this week?" from your own log. It opens the log read-only and gives your agent four tools: `day` and `range` (the report's numbers), `minutes` (each minute's app, window title, address and label) and `projects` (your categories and projects).
+
+```bash
+claude mcp add --scope user timelens -- timelens mcp   # Claude Code, in every project
+codex mcp add timelens -- timelens mcp                 # Codex
+```
+
+For Claude Desktop (`~/Library/Application Support/Claude/claude_desktop_config.json`) or Cursor (`~/.cursor/mcp.json`), add the lines below and restart the app. Desktop needs the full path, which `which timelens` prints:
+
+```json
+{ "mcpServers": { "timelens": { "command": "/opt/homebrew/bin/timelens", "args": ["mcp"] } } }
+```
+
 ## What leaves your Mac
 
 A tool that looks at your screen has to say exactly what happens to what it sees.
@@ -124,6 +139,7 @@ A tool that looks at your screen has to say exactly what happens to what it sees
 | The model's answer | Kept locally: category, project, probabilities. |
 | A password manager or banking site in front | Logged as `private`. Nothing is captured or sent. |
 | Idle or locked screen | Logged as `away`. |
+| Your log, if you connect your agent ([`timelens mcp`](#use-it-with-your-agent)) | Nothing is sent until your agent asks. The totals, window titles and addresses it asks for go into its conversation, so your agent's model provider receives them. |
 
 The request goes to the provider you chose. The default pins OpenRouter to Perplexity with fallbacks switched off, so your screenshots aren't rerouted to whichever host is cheapest that minute. You can also turn screenshots off and send only app, title and address, which is cheaper and works well for browsers and editors with descriptive titles.
 
@@ -209,7 +225,7 @@ Not yet. The macOS-specific part is about 70 lines (window list, screenshot, idl
 ## Project layout
 
 ```
-timelens.py       sampler, model request, masking, reports, demo, self-test
+timelens.py       sampler, model request, masking, reports, MCP server, demo, self-test
 onboarding.py     the setup page's local server: presets, config writer, Keychain, launchd
 onboarding.html   the setup page
 presets.toml      the goals offered during setup
