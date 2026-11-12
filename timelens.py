@@ -12,7 +12,7 @@
 
 Your setup lives in ~/Library/Application Support/timelens/config.toml ($TIMELENS_CONFIG overrides it).
 """
-import base64, html, json, os, re, sqlite3, subprocess, sys, tempfile, time, tomllib, urllib.error, urllib.request, uuid
+import base64, html, json, os, re, sqlite3, subprocess, sys, tempfile, threading, time, tomllib, urllib.error, urllib.request, uuid
 from collections import Counter
 from datetime import date, datetime, timedelta
 from pathlib import Path
@@ -25,6 +25,7 @@ CFG = tomllib.loads(CONFIG.read_text())
 DB = DATA / "log.sqlite"
 QUEUE = DATA / "queue"   # batch mode only: screenshots waiting to be labelled by a local model
 RECAP = DATA / "last-recap"  # the date the morning recap last appeared
+APP = ROOT / "timelens.app/Contents/MacOS/timelens"  # the signed launcher; Homebrew installs it next to this file
 
 CATEGORIES = {k: " ".join(v.split()) for k, v in CFG["categories"].items()}
 PALETTE = ["#3b6fe0", "#6c8ff0", "#2fa58a", "#e0a020", "#9b6bd6", "#5bb4d6", "#8a8f98", "#e0566b", "#b9bdc4", "#c78a5b"]
@@ -285,6 +286,7 @@ def run():
                     con.execute("select status from samples order by ts desc limit 1").fetchone()[0] == "ok":
                 process_queue(con, 4)  # back online: catch up on minutes missed while offline, a few at a time
             recap(con)
+            nudge(con)
             ask_new_project(con)
         except Exception as e:  # never die; launchd would restart us anyway
             print(f"{datetime.now():%F %T} {e!r}", file=sys.stderr)
@@ -515,14 +517,88 @@ def recap(con):
 
 
 def notify(m, week, path):
-    """A small dialog with the headline and a button that opens the report. Doesn't wait for the answer."""
-    text = f"{dur(m['active'])} on the laptop · {m['intentional']:.0%} intentional"
-    subprocess.Popen(["osascript", "-e", "on run argv", "-e", "activate", "-e",
-                      'set r to display dialog (item 1 of argv) with title (item 2 of argv) buttons {"Not now", "Open report"} '
-                      'cancel button "Not now" giving up after 900', "-e",
-                      'if button returned of r is "Open report" then do shell script "open " & quoted form of (item 3 of argv)',
-                      "-e", "end run", text, f"timelens: {'last week' if week else 'yesterday'}", str(path)],
-                     stdout=subprocess.DEVNULL)  # errors go to the tracker's log
+    """The headline as a notification that opens the report when clicked. When that can't be shown (no timelens.app,
+    or notifications not allowed), a small dialog with an "Open report" button instead, so the recap is never lost."""
+    title, text = f"timelens: {'last week' if week else 'yesterday'}", f"{dur(m['active'])} on the laptop · {m['intentional']:.0%} intentional"
+    banner(title, text, path, fallback=lambda: subprocess.run(
+        ["osascript", "-e", "on run argv", "-e", "activate", "-e",
+         'set r to display dialog (item 1 of argv) with title (item 2 of argv) buttons {"Not now", "Open report"} '
+         'cancel button "Not now" giving up after 900', "-e",
+         'if button returned of r is "Open report" then do shell script "open " & quoted form of (item 3 of argv)',
+         "-e", "end run", text, title, str(path)], stdout=subprocess.DEVNULL))  # errors go to the tracker's log
+
+
+def banner(title, text, open_path=None, fallback=None):
+    """A macOS notification. Through timelens.app it shows the timelens icon and a click opens open_path. If the app
+    can't post it (missing, an older app, or notifications not allowed), `fallback` runs, or osascript's notification
+    (Script Editor's icon, and a click can't open anything). Runs in a thread: the app may wait for the permission prompt."""
+    def post():
+        cmd = [str(APP), "notify", "--title", title, "--body", text] + (["--open", str(open_path)] if open_path else [])
+        if APP.exists() and subprocess.run(cmd, stdout=subprocess.DEVNULL).returncode == 0:  # errors go to the tracker's log
+            return
+        (fallback or (lambda: subprocess.run(["osascript", "-e", "on run argv", "-e",
+                                              "display notification (item 2 of argv) with title (item 1 of argv)",
+                                              "-e", "end run", title, text], stdout=subprocess.DEVNULL)))()
+    threading.Thread(target=post, daemon=True).start()
+
+
+FRAYING = 1.4  # switching this many times faster than your usual counts as focus fraying
+BREAK = 10   # minutes away (or asleep: no samples at all) that count as a break
+nudged = 0   # when the break reminder last appeared, so each stretch at the laptop gets one
+
+
+def nudge(con):
+    """After break_after_minutes at the laptop without a break, one gentle notification for that stretch."""
+    global nudged
+    if not CFG.get("nudges", True):
+        return
+    rows = con.execute("select ts, status, activity from samples where ts > (select max(ts) from samples) - 43200 "
+                       "order by ts").fetchall()  # the last 12 hours
+    here = [r for r in rows if r[1] != "away"]
+    if not here or rows[-1][1] == "away":
+        return
+    start = here[0][0]
+    for a, b in zip(here, here[1:]):
+        if b[0] - a[0] > (BREAK + .5) * 60:  # 10 minutes away = 11 between two samples here, 9 = 10: split the difference
+            start = b[0]
+    end = here[-1][0]
+    if start <= nudged or end - start < min(60, CFG.get("break_after_minutes", 120)) * 60:
+        return
+    stretch = [r for r in here if r[0] >= start]
+    labelled = [r[2] for r in stretch if r[1] == "ok"]
+    focus = f", {sum(a in FOCUS for a in labelled) / len(labelled):.0%} focused" if labelled else ""
+    rate, usual = switch_rate(con, end - 1200, end), usual_switch_rate(con)
+    if end - start >= CFG.get("break_after_minutes", 120) * 60:
+        title = f"timelens: {dur(CFG.get('break_after_minutes', 120)).replace(' 00', '')} without a break"
+        body = f"{dur((end - start) // 60)} at the laptop{focus}. A good moment to get up and drink some water."
+    elif usual and rate >= max(FRAYING * usual, 12):  # focus is fraying: an early break beats the 2-hour mark
+        title = "timelens: time for a break?"
+        body = (f"{dur((end - start) // 60)} without a break, and you're switching apps {rate:.0f} times an hour "
+                f"(you usually do {usual:.0f}). Good moment for a short break.")
+    else:
+        return
+    nudged = end
+    banner(title, body)
+
+
+def switch_rate(con, a, b):
+    """App switches per hour at the Mac between a and b (one sample a minute: a change of app counts as a switch)."""
+    rows = con.execute("select ts, app from samples where ts >= ? and ts <= ? and status != 'away' order by ts", (a, b)).fetchall()
+    pairs = [(x, y) for x, y in zip(rows, rows[1:]) if y[0] - x[0] <= 90]
+    return sum(x[1] != y[1] for x, y in pairs) * 60 / len(pairs) if len(pairs) >= 15 else 0
+
+
+_usual = (0, 0)  # (computed at, switches per hour): your own normal, refreshed hourly
+
+
+def usual_switch_rate(con):
+    """Your usual switch rate over the last 14 days; 0 until there are about 3 working days of data."""
+    global _usual
+    if time.time() - _usual[0] > 3600:
+        now = time.time()
+        n = con.execute("select count(*) from samples where ts > ? and status != 'away'", (now - 14 * 86400,)).fetchone()[0]
+        _usual = (now, switch_rate(con, now - 14 * 86400, now) if n >= 900 else 0)
+    return _usual[1]
 
 
 ASKED = DATA / "last-project-ask"  # when we last asked to name a project that isn't on the list
@@ -537,7 +613,6 @@ def ask_new_project(con):
     if len(rows) < 60 or con.execute("select status from samples order by ts desc limit 1").fetchone()[0] == "away":
         return
     ASKED.write_text(str(now))  # answered or not, the next question needs 60 new minutes
-    import threading
     threading.Thread(target=lambda: add_project(ask_project_name(project_hints(rows))), daemon=True).start()
 
 
