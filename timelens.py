@@ -621,7 +621,7 @@ def ask_new_project(con):
     if len(rows) < 60 or con.execute("select status from samples order by ts desc limit 1").fetchone()[0] == "away":
         return
     ASKED.write_text(str(now))  # answered or not, the next question needs 60 new minutes
-    threading.Thread(target=lambda: add_project(ask_project_name(project_hints(rows))), daemon=True).start()
+    threading.Thread(target=lambda: add_project(*ask_project_name(project_hints(rows))), daemon=True).start()
 
 
 def project_hints(rows, n=5):
@@ -636,22 +636,40 @@ def project_hints(rows, n=5):
     return c.most_common(n)
 
 
+ASK_PROJECT = """ObjC.import('Cocoa')
+function run(argv) {  // a native window with two fields; prints "name<TAB>description" after "Add project"
+  const app = $.NSApplication.sharedApplication, a = $.NSAlert.alloc.init, v = $.NSView.alloc.initWithFrame($.NSMakeRect(0, 0, 420, 116))
+  app.setActivationPolicy($.NSApplicationActivationPolicyAccessory)
+  a.messageText = 'Looks like a new project'
+  a.informativeText = argv[0]
+  if (argv[1]) a.icon = $.NSImage.alloc.initWithContentsOfFile(argv[1])
+  a.addButtonWithTitle('Add project'); a.addButtonWithTitle('Not a project')
+  const field = (label, hint, y) => {
+    const l = $.NSTextField.labelWithString(label); l.frame = $.NSMakeRect(0, y + 28, 420, 17); v.addSubview(l)
+    const f = $.NSTextField.alloc.initWithFrame($.NSMakeRect(0, y, 420, 24)); f.placeholderString = hint; v.addSubview(f); return f }
+  const name = field('Name', 'e.g. acme-website', 62), desc = field('What it is, and how it shows up on screen', 'e.g. Client: Acme\\'s new website, built in Webflow', 0)
+  a.accessoryView = v; a.window.initialFirstResponder = name
+  app.activateIgnoringOtherApps(true)
+  return a.runModal == $.NSAlertFirstButtonReturn ? name.stringValue.js + '\\t' + desc.stringValue.js : ''
+}"""
+
+
 def ask_project_name(hints):
-    """A local dialog with a text field. Returns what was typed after "Add", else ""."""
-    text = ("Looks like you're working on a project that isn't on your list. What is it?\n\n"
-            + "".join(f"• {t} ({n} min)\n" for t, n in hints) + ("\n" if hints else "")
-            + "Type name: description, e.g.\nacme-outbound: Client: Acme's outbound campaign and its funnel")
-    r = subprocess.run(["osascript", "-e", "on run argv", "-e", "activate", "-e",
-                        'set r to display dialog (item 1 of argv) with title "timelens: new project" default answer "" '
-                        'buttons {"Not a project", "Add"} default button "Add" giving up after 600', "-e",
-                        'if button returned of r is "Add" then return text returned of r', "-e", "end run", text],
+    """A small native window (timelens icon, a name field and a description field). Returns (name, description),
+    both empty unless "Add project" was pressed. Waits for an answer: it runs in its own thread."""
+    text = ("timelens keeps seeing work that isn't on your project list"
+            + (", like:\n" + "".join(f"• {t} ({n} min)\n" for t, n in hints) if hints else ".\n")
+            + "\nName it so its time gets tracked: a client project (acme-website), a side project (recipe-app), "
+              "your studies (thesis)…")
+    icon = next((i for i in (APP.parent.parent / "Resources/timelens.icns", ROOT / "launcher/timelens.icns") if i.exists()), "")
+    r = subprocess.run(["osascript", "-l", "JavaScript", "-e", ASK_PROJECT, text, str(icon)],
                        capture_output=True, text=True)
-    return r.stdout.strip()
+    name, _, desc = r.stdout.strip("\n").partition("\t")
+    return name, desc
 
 
-def add_project(answer):
-    """'name: description' -> a [projects.known] entry in the config file and in the running tracker's CFG."""
-    name, _, desc = answer.partition(":")
+def add_project(name, desc=""):
+    """A [projects.known] entry in the config file and in the running tracker's CFG."""
     desc = " ".join(desc.split()) or name.strip()
     name = re.sub(r"[^a-z0-9]+", "-", name.lower()).strip("-")
     if not name:
