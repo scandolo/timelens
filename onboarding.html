@@ -124,7 +124,7 @@ const GUIDES = {
 
 let S, step = 0, welcome = false, tested = null, poll, agentPoll, contextTab = 'self', agentFilled = false, previewTab = 'day', previewUrls = null, installed = null;
 const C = {preset: null, categories: [], about: '', dirs: [], known: {}, ignore: [], provider: 'openrouter', model: 'perplexity/pplx-decider-v1.2', key: '',
-           screenshots: true, report_time: '19:00', batch_window: '12:30-14:00'};
+           screenshots: true, batch_window: '12:30-14:00'};
 const KINDS = [['focus', 'Focus'], ['neutral', 'Neutral'], ['distraction', 'Distraction']];
 // about 8 working hours a day, 22 days a month, one call a minute
 const monthly = m => m.price ? `≈ $${(m.tokens * 480 * 22 * m.price / 1e6).toFixed(2)}/month` : 'Free';
@@ -190,7 +190,6 @@ const steps = [
     ok: () => !!tested },
   { // 5. preferences, then install
     render: () => `${S.dry_run ? '<div class="banner warn">Preview mode: nothing will be installed.</div>' : ''}<h1>A few preferences</h1><p class="lead">You can change these any time.</p>
-      <label class="f">Daily report at</label><input type="time" value="${C.report_time}" style="width:140px" oninput="C.report_time=this.value">
       ${C.provider === 'local' ? `<label class="f">Also label queued minutes between</label>
         <input value="${esc(C.batch_window)}" style="width:180px" placeholder="12:30-14:00" oninput="C.batch_window=this.value">
         <p class="hint">Queued minutes are labelled whenever you've been away for 10 minutes, and during this window.</p>` : ''}
@@ -213,7 +212,7 @@ const steps = [
     ok: () => true, enter: () => { if (!S.dry_run) { poll = setInterval(live, 5000); live(); } } },
   { // 7. preview
     wide: true,
-    render: () => `<h1>Here's what you'll get</h1><p class="lead">An invented week, drawn with your categories and projects. Your real one arrives at ${C.report_time}.</p>
+    render: () => `<h1>Here's what you'll get</h1><p class="lead">An invented week, drawn with your categories and projects. Your real one arrives the morning after your first day.</p>
       <div class="tabs"><button class="${previewTab === 'day' ? 'on' : ''}" onclick="previewTab='day';draw()">Day</button><button class="${previewTab === 'week' ? 'on' : ''}" onclick="previewTab='week';draw()">Week</button></div>
       ${previewUrls ? `<iframe class="frame" src="${previewUrls[previewTab]}"></iframe>` : '<p class="hint">Drawing your preview…</p>'}` + nav('Done', "finish()"),
     ok: () => true, enter: async () => { previewUrls = await api('/api/preview', {config: C, projects: Object.values(found).flat().filter(Boolean)}); draw(); } },
@@ -230,7 +229,7 @@ function pick(id) {
     C.categories.sort((a, b) => (a.kind === 'none') - (b.kind === 'none'));
     const prov = /openrouter/.test(e.api_url) ? 'openrouter' : /typesafe/.test(e.api_url) ? 'typesafe' : 'local';
     Object.assign(C, {about: e.about || '', dirs: e.projects?.dirs || [], known: e.projects?.known || {}, ignore: e.projects?.ignore || [], screenshots: e.screenshots !== false,
-      report_time: e.report_time || '19:00', provider: prov, model: e.model, batch_window: e.batch_window || C.batch_window});
+      provider: prov, model: e.model, batch_window: e.batch_window || C.batch_window});
   } else C.categories = preset().category.map(c => ({...c, hint: c.example, example: ''}));  // examples are optional: shown as hints
   draw();
 }
@@ -298,7 +297,7 @@ async function install() {
   try { installed = await api('/api/install', {config: C, key: C.key || null}); go(1) }
   catch (e) { $('#installout').innerHTML = `<span class="err">${esc(e.message)}</span>` }
 }
-function finish() { api('/api/done', {}); $('#view').innerHTML = `<h1>All set.</h1><p class="lead">You can close this tab. Your first report arrives at ${C.report_time}.</p>` }
+function finish() { api('/api/done', {}); $('#view').innerHTML = `<h1>All set.</h1><p class="lead">You can close this tab. Your first report arrives the next morning, the first time you sit down.</p>` }
 async function live() {
   const s = await api('/api/status'); if (!$('#live')) return clearInterval(poll);
   const rows = s.samples.map(r => `<tr><td>${new Date(r.ts * 1000).toLocaleTimeString([], {hour: '2-digit', minute: '2-digit'})}</td><td>${esc(r.app || '')}</td>
@@ -307,7 +306,7 @@ async function live() {
     + (rows ? `<b>Last few minutes</b><table class="live">${rows}</table>` : 'Waiting for the first minute…');
 }
 const hello = () => `<div class="hello"><h1>Every evening,<br>the honest version of your day.</h1>
-  <p class="lead">timelens looks at your screen once a minute and files that minute under categories you choose. Each evening you get a short report of where the hours went.</p>
+  <p class="lead">timelens looks at your screen once a minute and files that minute under categories you choose. Each morning you get a short report of where yesterday's hours went.</p>
   <ul><li><span class="tile">${icon('target')}</span><div><b>Pick what to track</b><br><span>Start from a goal, then make the categories yours.</span></div></li>
   <li><span class="tile">${icon('key')}</span><div><b>Connect a model</b><br><span>About $0.50 a month, or free and fully on this Mac.</span></div></li>
   <li><span class="tile">${icon('eye')}</span><div><b>Let it see your screen</b><br><span>Each screenshot is sent once and never stored.</span></div></li></ul>

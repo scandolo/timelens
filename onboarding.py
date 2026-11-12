@@ -75,7 +75,6 @@ def build_config(c):
         "api_url": prov["api_url"], "model": m["id"], "provider": m["pin"], "keychain_service": prov["keychain_service"],
         "price_per_mtok": m["price"],
         "interval_seconds": 60, "screenshots": bool(c["screenshots"]), "idle_minutes": 5, "min_confidence": 0.25,
-        "report_time": c["report_time"] or "19:00",
         "processing": "batch" if c["provider"] == "local" else "live",
         "batch_window": c.get("batch_window", "") if c["provider"] == "local" else "", "batch_idle_minutes": 10,
         "about": c["about"].strip(),
@@ -93,7 +92,7 @@ def build_config(c):
 def write_config(cfg):
     lines = ["# Written by the timelens setup page. Rerun ./install.sh to change it, or edit by hand.", ""]
     for k in ("api_url", "model", "provider", "keychain_service", "price_per_mtok", "interval_seconds",
-              "screenshots", "idle_minutes", "min_confidence", "report_time", "processing", "batch_window",
+              "screenshots", "idle_minutes", "min_confidence", "processing", "batch_window",
               "batch_idle_minutes"):
         v = cfg[k]
         lines.append(f"{k} = {str(v).lower() if isinstance(v, bool) else toml_str(v) if isinstance(v, str) else v}")
@@ -117,19 +116,19 @@ def store_key(service, key):
     subprocess.run(["security", "add-generic-password", "-U", "-s", service, "-a", "timelens", "-w", key], check=True)
 
 
-def install_agents(report_time):
-    """Two launchd agents: the sampler (always on) and the evening report."""
+def install_agents():
+    """The sampler's launchd agent (always on). It also shows yesterday's recap at your first minute each day."""
     DATA.mkdir(parents=True, exist_ok=True)
     AGENTS.mkdir(parents=True, exist_ok=True)
     py, script = sys.executable, str(HOME / "timelens.py")  # the venv this setup runs in, the stable install path
-    hour, minute = (int(x) for x in report_time.split(":"))
     # with timelens.app (Homebrew installs it) macOS shows "timelens" in Privacy settings instead of python3.13
     sampler = [str(LAUNCHER), "run"] if LAUNCHER.exists() else [py, script, "run"]
     jobs = {
         "com.timelens.sampler": {"ProgramArguments": sampler, "RunAtLoad": True, "KeepAlive": True},
-        "com.timelens.report": {"ProgramArguments": [py, script, "report", "--notify"],
-                                "StartCalendarInterval": {"Hour": hour, "Minute": minute}},
     }
+    # earlier versions sent the report at a fixed evening time; the sampler shows it in the morning now
+    subprocess.run(["launchctl", "bootout", f"gui/{os.getuid()}/com.timelens.report"], capture_output=True)
+    (AGENTS / "com.timelens.report.plist").unlink(missing_ok=True)
     for label, job in jobs.items():
         path = AGENTS / f"{label}.plist"
         path.write_bytes(plistlib.dumps({"Label": label, "ProcessType": "Background",
@@ -238,7 +237,7 @@ class Handler(BaseHTTPRequestHandler):
                 if not DRY_RUN:
                     if req.get("key") and cfg["keychain_service"]:
                         store_key(cfg["keychain_service"], req["key"])
-                    install_agents(cfg["report_time"])
+                    install_agents()
                 return self.reply({"ok": True, "python": python_path(), "dry_run": DRY_RUN, "config": str(LOCAL)})
             if self.path == "/api/agent-reset":
                 AGENT_FILE.unlink(missing_ok=True)

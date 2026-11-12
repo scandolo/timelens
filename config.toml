@@ -12,7 +12,6 @@ interval_seconds = 60
 screenshots = true        # false = send only app, window title and URL (cheaper, more private, less accurate)
 idle_minutes = 5          # no input for this long = away (except during a meeting)
 min_confidence = 0.25     # answers below this show as "unclear" in reports
-report_time = "19:00"     # when the daily notification arrives
 
 # Sent with every question so the model can tell your contexts apart. Name your projects and clients.
 about = "The person works on a Mac. Describe what you do and what you work on here."

@@ -15,7 +15,7 @@ A Mac time tracker that looks at your screen once a minute and tells you where t
 ![Local mode](https://img.shields.io/badge/runs-cloud%20or%20fully%20local-6c8ff0)
 ![License](https://img.shields.io/badge/license-MIT-blue)
 
-[Install](#install) · [What you see](#what-you-see-each-evening) · [What leaves your Mac](#what-leaves-your-mac) · [Goals](#start-from-a-goal) · [Models and cost](#models-and-cost) · [FAQ](#faq)
+[Install](#install) · [What you see](#what-you-see-each-morning) · [What leaves your Mac](#what-leaves-your-mac) · [Goals](#start-from-a-goal) · [Models and cost](#models-and-cost) · [FAQ](#faq)
 
 </div>
 
@@ -23,9 +23,9 @@ A Mac time tracker that looks at your screen once a minute and tells you where t
 
 Most days end with a feeling of having been busy and no clear idea of what with. Timers only work while you remember to press them, and automatic trackers count apps, which stopped meaning much once one chat window or editor started holding your main project, a side project, a quick question and twenty minutes of drifting. To them it's all "Claude" or "Chrome".
 
-timelens looks at what's on the screen instead. Once a minute it shows the front window to a small decision model, which files the minute under categories you chose, with a few sentences of context only you can give ("anything in the `pebble-api` repository is my main product"). At 7 pm a notification gives you the headline, and a report shows the rest.
+timelens looks at what's on the screen instead. Once a minute it shows the front window to a small decision model, which files the minute under categories you chose, with a few sentences of context only you can give ("anything in the `pebble-api` repository is my main product"). The first time you sit down each morning, a small window gives you yesterday's headline, and its button opens the report with the rest.
 
-## What you see each evening
+## What you see each morning
 
 <table>
 <tr>
@@ -99,7 +99,7 @@ After that there's nothing to open or click. timelens runs as one background pro
 ```bash
 timelens report --open        # today's report and this week's, right now
 timelens report 2026-11-03    # any earlier day
-timelens setup                # change your goal, categories, model or report time
+timelens setup                # change your goal, categories or model
 timelens demo                 # an invented week, no API and no screen access
 ```
 
@@ -111,7 +111,7 @@ git clone https://github.com/scandolo/timelens && cd timelens
 ```
 </details>
 
-To pause, run `launchctl bootout gui/$UID/com.timelens.sampler` (`timelens setup` starts it again). To uninstall, also boot out `com.timelens.report`, delete `~/Library/LaunchAgents/com.timelens.*.plist` and `~/Library/Application Support/timelens`, then `brew uninstall timelens`.
+To pause, run `launchctl bootout gui/$UID/com.timelens.sampler` (`timelens setup` starts it again). To uninstall, delete `~/Library/LaunchAgents/com.timelens.*.plist` and `~/Library/Application Support/timelens`, then `brew uninstall timelens`.
 
 ## What leaves your Mac
 

@@ -23,6 +23,7 @@ CONFIG = Path(os.environ.get("TIMELENS_CONFIG") or next(  # yours, then a git ch
 CFG = tomllib.loads(CONFIG.read_text())
 DB = DATA / "log.sqlite"
 QUEUE = DATA / "queue"   # batch mode only: screenshots waiting to be labelled by a local model
+RECAP = DATA / "last-recap"  # the date the morning recap last appeared
 
 CATEGORIES = {k: " ".join(v.split()) for k, v in CFG["categories"].items()}
 PALETTE = ["#3b6fe0", "#6c8ff0", "#2fa58a", "#e0a020", "#9b6bd6", "#5bb4d6", "#8a8f98", "#e0566b", "#b9bdc4", "#c78a5b"]
@@ -282,6 +283,7 @@ def run():
             elif QUEUE.exists() and any(QUEUE.glob("*.json")) and \
                     con.execute("select status from samples order by ts desc limit 1").fetchone()[0] == "ok":
                 process_queue(con, 4)  # back online: catch up on minutes missed while offline, a few at a time
+            recap(con)
         except Exception as e:  # never die; launchd would restart us anyway
             print(f"{datetime.now():%F %T} {e!r}", file=sys.stderr)
         time.sleep(max(1, CFG["interval_seconds"] - (time.time() - t0)))
@@ -497,9 +499,28 @@ def report(d, con):
     return DATA / "reports" / (week_file if d.weekday() == 6 else day_file), (wm if d.weekday() == 6 else m)
 
 
-def notify(m, week):
+def recap(con):
+    """Once a day, at the first minute you're at the Mac: yesterday's headline (last week's on Mondays) and its report."""
+    today = date.today()
+    if (RECAP.read_text().strip() if RECAP.exists() else "") >= str(today) or \
+            con.execute("select status from samples order by ts desc limit 1").fetchone()[0] == "away":
+        return
+    RECAP.write_text(str(today))
+    yesterday = today - timedelta(days=1)
+    path, m = report(yesterday, con)
+    if m["active"]:
+        notify(m, yesterday.weekday() == 6, path)
+
+
+def notify(m, week, path):
+    """A small dialog with the headline and a button that opens the report. Doesn't wait for the answer."""
     text = f"{dur(m['active'])} on the laptop · {m['intentional']:.0%} intentional"
-    subprocess.run(["osascript", "-e", f'display notification "{text}" with title "timelens: your {"week" if week else "day"}"'])
+    subprocess.Popen(["osascript", "-e", "on run argv", "-e", "activate", "-e",
+                      'set r to display dialog (item 1 of argv) with title (item 2 of argv) buttons {"Not now", "Open report"} '
+                      'cancel button "Not now" giving up after 900', "-e",
+                      'if button returned of r is "Open report" then do shell script "open " & quoted form of (item 3 of argv)',
+                      "-e", "end run", text, f"timelens: {'last week' if week else 'yesterday'}", str(path)],
+                     stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
 
 
 # ---------- presets, demo, self-check ----------
@@ -603,8 +624,6 @@ if __name__ == "__main__":
         d = next((date.fromisoformat(a) for a in args if not a.startswith("-")), date.today())
         path, m = report(d, db())
         print(path)
-        if "--notify" in args:
-            notify(m, d.weekday() == 6)
         if "--open" in args:
             subprocess.run(["open", path])
     elif cmd == "process":  # label everything still queued (batch mode), now
