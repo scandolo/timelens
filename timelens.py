@@ -285,6 +285,7 @@ def run():
                     con.execute("select status from samples order by ts desc limit 1").fetchone()[0] == "ok":
                 process_queue(con, 4)  # back online: catch up on minutes missed while offline, a few at a time
             recap(con)
+            nudge(con)
         except Exception as e:  # never die; launchd would restart us anyway
             print(f"{datetime.now():%F %T} {e!r}", file=sys.stderr)
         time.sleep(max(1, CFG["interval_seconds"] - (time.time() - t0)))
@@ -536,6 +537,34 @@ def banner(title, text, open_path=None):
         cmd = ["osascript", "-e", "on run argv", "-e", "display notification (item 2 of argv) with title (item 1 of argv)",
                "-e", "end run", title, text]
     subprocess.Popen(cmd, stdout=subprocess.DEVNULL)  # errors go to the tracker's log
+
+
+BREAK = 10   # minutes away (or asleep: no samples at all) that count as a break
+nudged = 0   # when the break reminder last appeared, so each stretch at the laptop gets one
+
+
+def nudge(con):
+    """After break_after_minutes at the laptop without a break, one gentle notification for that stretch."""
+    global nudged
+    if not CFG.get("nudges", True):
+        return
+    rows = con.execute("select ts, status, activity from samples where ts > (select max(ts) from samples) - 43200 "
+                       "order by ts").fetchall()  # the last 12 hours
+    here = [r for r in rows if r[1] != "away"]
+    if not here or rows[-1][1] == "away":
+        return
+    start = here[0][0]
+    for a, b in zip(here, here[1:]):
+        if b[0] - a[0] > (BREAK + .5) * 60:  # 10 minutes away = 11 between two samples here, 9 = 10: split the difference
+            start = b[0]
+    end = here[-1][0]
+    if end - start < CFG.get("break_after_minutes", 120) * 60 or start <= nudged:
+        return
+    nudged = end
+    labelled = [r[2] for r in here if r[0] >= start and r[1] == "ok"]
+    focus = f", {sum(a in FOCUS for a in labelled) / len(labelled):.0%} focused" if labelled else ""
+    banner(f"timelens: {dur(CFG.get('break_after_minutes', 120)).replace(' 00', '')} without a break",
+           f"{dur((end - start) // 60)} at the laptop{focus}. A good moment to get up and drink some water.")
 
 
 # ---------- presets, demo, self-check ----------
