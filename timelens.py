@@ -520,7 +520,7 @@ def notify(m, week, path):
                       'cancel button "Not now" giving up after 900', "-e",
                       'if button returned of r is "Open report" then do shell script "open " & quoted form of (item 3 of argv)',
                       "-e", "end run", text, f"timelens: {'last week' if week else 'yesterday'}", str(path)],
-                     stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+                     stdout=subprocess.DEVNULL)  # errors go to the tracker's log
 
 
 # ---------- presets, demo, self-check ----------
