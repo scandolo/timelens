@@ -7,7 +7,7 @@ DATA=${TIMELENS_DATA:-$HOME/Library/Application Support/timelens}
 VENV=$DATA/venv
 if [[ ! -x $VENV/bin/python ]]; then
   command -v uv >/dev/null || { echo "timelens needs uv: brew install uv"; exit 1; }
-  echo "Setting up timelens (first run only, about 20 seconds)…"
+  echo "Setting up timelens (first run only, about 20 seconds)…" >&2  # stderr: stdout may be an MCP stream
   mkdir -p "$DATA"
   uv venv -q --python 3.13 "$VENV"
   uv pip install -q -p "$VENV" pyobjc-framework-Quartz pyobjc-framework-Cocoa
