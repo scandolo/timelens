@@ -640,7 +640,7 @@ def ask_project_name(hints):
     """A local dialog with a text field. Returns what was typed after "Add", else ""."""
     text = ("Looks like you're working on a project that isn't on your list. What is it?\n\n"
             + "".join(f"• {t} ({n} min)\n" for t, n in hints) + ("\n" if hints else "")
-            + "Type name: description, e.g.\nfc-outbound: Client: Founders Capital outbound and demand-gen engine")
+            + "Type name: description, e.g.\nacme-outbound: Client: Acme's outbound campaign and its funnel")
     r = subprocess.run(["osascript", "-e", "on run argv", "-e", "activate", "-e",
                         'set r to display dialog (item 1 of argv) with title "timelens: new project" default answer "" '
                         'buttons {"Not a project", "Add"} default button "Add" giving up after 600', "-e",

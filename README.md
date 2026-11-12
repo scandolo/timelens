@@ -48,6 +48,13 @@ timelens looks at what's on the screen instead. Once a minute it shows the front
 
 Drift and intentional time are compared with your own average for that weekday, so you can tell a good Thursday from a normal one. The reports are plain HTML files on your disk, and every number in them is computed by ordinary code from the minute log; the model only labels minutes.
 
+During the day, timelens stays quiet except for three kinds of notification:
+- **A break reminder** after 2 hours without 10 minutes away, or after an hour if you're switching apps much faster than you usually do. You get one per stretch.
+- **A small reward** when you set a focus record (longest focus block, calmest focus hour…) or keep a focus streak going.
+- **A question** when the model keeps seeing a project that isn't on your list, so you can name it.
+
+Turn the first two off with `nudges = false` or `rewards = false` in your config.
+
 ## Install
 
 ```bash
