@@ -119,7 +119,7 @@ A tool that looks at your screen has to say exactly what happens to what it sees
 
 | What | What happens to it |
 |---|---|
-| Screenshot of the front window | Resized to a 1280px JPEG, sent in one HTTPS request, and deleted about a second later. It is never stored. |
+| Screenshot of the front window | Resized to a 1280px JPEG, sent in one HTTPS request, and deleted about a second later. If the request fails because you're offline or the API is busy, it waits in a private folder (readable only by you) and is deleted as soon as its minute is labelled. |
 | App name, window title, web address | Sent in the same request and kept locally, so past days can be relabelled if you change categories. Email addresses, phone numbers and card or bank numbers in titles are masked first, and addresses lose their query string (searches, tokens, IDs). |
 | The model's answer | Kept locally: category, project, probabilities. |
 | A password manager or banking site in front | Logged as `private`. Nothing is captured or sent. |

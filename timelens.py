@@ -191,12 +191,7 @@ def sample(con, dry_run=False, verbose=False):
     title, url = redact(title), redact_url(url)
     jpeg = screenshot(wid) if wid and CFG.get("screenshots", True) else None
     if CFG.get("processing") == "batch" and not dry_run:  # local model: queue now, label later while you're away
-        QUEUE.mkdir(mode=0o700, parents=True, exist_ok=True)
-        (QUEUE / f"{ts}.json").write_text(json.dumps({"app": app, "bundle": bundle, "title": title, "url": url}))
-        if jpeg:
-            (QUEUE / f"{ts}.jpg").write_bytes(jpeg)
-        return con.execute("insert or replace into samples(ts, status, app, bundle, title, url) values(?, 'queued', ?, ?, ?, ?)",
-                           (ts, app, bundle, title, url))
+        return enqueue(con, ts, app, bundle, title, url, jpeg)
     body = build_request(app, title, url, jpeg)
     if verbose or dry_run:
         shown = json.loads(json.dumps(body))
@@ -209,11 +204,29 @@ def sample(con, dry_run=False, verbose=False):
         r = call(body)
     except Exception as e:
         print(f"{datetime.now():%F %T} api error: {e}", file=sys.stderr)
+        if offline_or_busy(e):  # no Wi-Fi, timeout, rate limit: keep the minute and label it once the API answers again
+            return enqueue(con, ts, app, bundle, title, url, jpeg)
         return con.execute("insert or replace into samples(ts, status, app, bundle, title, url) values(?, 'error', ?, ?, ?, ?)",
                            (ts, app, bundle, title, url))
     if verbose:
         print(json.dumps(r, indent=2))
     store(con, ts, app, bundle, title, url, r)
+
+
+def offline_or_busy(e):
+    if isinstance(e, urllib.error.HTTPError):
+        return e.code in (408, 429, 500, 502, 503, 504, 529)
+    return isinstance(e, (urllib.error.URLError, TimeoutError, ConnectionError))
+
+
+def enqueue(con, ts, app, bundle, title, url, jpeg):
+    """Park a minute in the private queue folder (readable only by you) until it can be labelled."""
+    QUEUE.mkdir(mode=0o700, parents=True, exist_ok=True)
+    (QUEUE / f"{ts}.json").write_text(json.dumps({"app": app, "bundle": bundle, "title": title, "url": url}))
+    if jpeg:
+        (QUEUE / f"{ts}.jpg").write_bytes(jpeg)
+    return con.execute("insert or replace into samples(ts, status, app, bundle, title, url) values(?, 'queued', ?, ?, ?, ?)",
+                       (ts, app, bundle, title, url))
 
 
 def store(con, ts, app, bundle, title, url, r):
@@ -224,7 +237,8 @@ def store(con, ts, app, bundle, title, url, r):
 
 
 def process_queue(con, limit=None):
-    """Label queued minutes (batch mode), oldest first. Each screenshot is deleted as soon as its minute is labelled."""
+    """Label queued minutes (batch mode, or minutes missed while offline), oldest first.
+    Each screenshot is deleted as soon as its minute is labelled."""
     done = 0
     for meta in sorted(QUEUE.glob("*.json"))[:limit]:
         m, jpg = json.loads(meta.read_text()), meta.with_suffix(".jpg")
@@ -262,8 +276,12 @@ def run():
         try:
             sample(con)
             con.commit()
-            if CFG.get("processing") == "batch" and good_time_to_process():
-                process_queue(con, CFG.get("batch_per_minute", 4))
+            if CFG.get("processing") == "batch":
+                if good_time_to_process():
+                    process_queue(con, CFG.get("batch_per_minute", 4))
+            elif QUEUE.exists() and any(QUEUE.glob("*.json")) and \
+                    con.execute("select status from samples order by ts desc limit 1").fetchone()[0] == "ok":
+                process_queue(con, 4)  # back online: catch up on minutes missed while offline, a few at a time
         except Exception as e:  # never die; launchd would restart us anyway
             print(f"{datetime.now():%F %T} {e!r}", file=sys.stderr)
         time.sleep(max(1, CFG["interval_seconds"] - (time.time() - t0)))
