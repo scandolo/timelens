@@ -24,6 +24,7 @@ CFG = tomllib.loads(CONFIG.read_text())
 DB = DATA / "log.sqlite"
 QUEUE = DATA / "queue"   # batch mode only: screenshots waiting to be labelled by a local model
 RECAP = DATA / "last-recap"  # the date the morning recap last appeared
+APP = ROOT / "timelens.app/Contents/MacOS/timelens"  # the signed launcher; Homebrew installs it next to this file
 
 CATEGORIES = {k: " ".join(v.split()) for k, v in CFG["categories"].items()}
 PALETTE = ["#3b6fe0", "#6c8ff0", "#2fa58a", "#e0a020", "#9b6bd6", "#5bb4d6", "#8a8f98", "#e0566b", "#b9bdc4", "#c78a5b"]
@@ -513,14 +514,28 @@ def recap(con):
 
 
 def notify(m, week, path):
-    """A small dialog with the headline and a button that opens the report. Doesn't wait for the answer."""
+    """The headline as a notification that opens the report when clicked. Without timelens.app, osascript's
+    notifications can't be clicked, so it's a small dialog with an "Open report" button instead. Doesn't wait."""
     text = f"{dur(m['active'])} on the laptop · {m['intentional']:.0%} intentional"
+    if APP.exists():
+        return banner(f"timelens: {'last week' if week else 'yesterday'}", text, path)
     subprocess.Popen(["osascript", "-e", "on run argv", "-e", "activate", "-e",
                       'set r to display dialog (item 1 of argv) with title (item 2 of argv) buttons {"Not now", "Open report"} '
                       'cancel button "Not now" giving up after 900', "-e",
                       'if button returned of r is "Open report" then do shell script "open " & quoted form of (item 3 of argv)',
                       "-e", "end run", text, f"timelens: {'last week' if week else 'yesterday'}", str(path)],
                      stdout=subprocess.DEVNULL)  # errors go to the tracker's log
+
+
+def banner(title, text, open_path=None):
+    """A macOS notification. Through timelens.app it shows the timelens icon and a click opens open_path;
+    otherwise it's osascript's (Script Editor's icon, and a click can't open anything). Doesn't wait."""
+    if APP.exists():
+        cmd = [str(APP), "notify", "--title", title, "--body", text] + (["--open", str(open_path)] if open_path else [])
+    else:
+        cmd = ["osascript", "-e", "on run argv", "-e", "display notification (item 2 of argv) with title (item 1 of argv)",
+               "-e", "end run", title, text]
+    subprocess.Popen(cmd, stdout=subprocess.DEVNULL)  # errors go to the tracker's log
 
 
 # ---------- presets, demo, self-check ----------

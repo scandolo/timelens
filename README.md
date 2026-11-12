@@ -23,7 +23,7 @@ A Mac time tracker that looks at your screen once a minute and tells you where t
 
 Most days end with a feeling of having been busy and no clear idea of what with. Timers only work while you remember to press them, and automatic trackers count apps, which stopped meaning much once one chat window or editor started holding your main project, a side project, a quick question and twenty minutes of drifting. To them it's all "Claude" or "Chrome".
 
-timelens looks at what's on the screen instead. Once a minute it shows the front window to a small decision model, which files the minute under categories you chose, with a few sentences of context only you can give ("anything in the `pebble-api` repository is my main product"). The first time you sit down each morning, a small window gives you yesterday's headline, and its button opens the report with the rest.
+timelens looks at what's on the screen instead. Once a minute it shows the front window to a small decision model, which files the minute under categories you chose, with a few sentences of context only you can give ("anything in the `pebble-api` repository is my main product"). The first time you sit down each morning, a notification gives you yesterday's headline; click it for the report with the rest.
 
 ## What you see each morning
 
@@ -215,7 +215,7 @@ onboarding.html   the setup page
 presets.toml      the goals offered during setup
 AGENT_SETUP.md    what an AI agent follows to fill in your context
 bin/timelens      the command (creates its Python environment on first run)
-launcher/         timelens.app, a signed 40-line launcher so macOS lists "timelens" in Privacy settings
+launcher/         timelens.app, a signed launcher so macOS shows "timelens" in Privacy settings and on notifications
 eval.py           collect real screenshots, label them blind, compare models
 docs/             README images and the script that renders them from demo data
 ```
