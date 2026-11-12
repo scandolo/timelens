@@ -284,6 +284,7 @@ def run():
                     con.execute("select status from samples order by ts desc limit 1").fetchone()[0] == "ok":
                 process_queue(con, 4)  # back online: catch up on minutes missed while offline, a few at a time
             recap(con)
+            ask_new_project(con)
         except Exception as e:  # never die; launchd would restart us anyway
             print(f"{datetime.now():%F %T} {e!r}", file=sys.stderr)
         time.sleep(max(1, CFG["interval_seconds"] - (time.time() - t0)))
@@ -521,6 +522,73 @@ def notify(m, week, path):
                       'if button returned of r is "Open report" then do shell script "open " & quoted form of (item 3 of argv)',
                       "-e", "end run", text, f"timelens: {'last week' if week else 'yesterday'}", str(path)],
                      stdout=subprocess.DEVNULL)  # errors go to the tracker's log
+
+
+ASKED = DATA / "last-project-ask"  # when we last asked to name a project that isn't on the list
+
+
+def ask_new_project(con):
+    """The model can only pick from the list, so after 60 'new_project' minutes in 48 hours (counted since the last
+    question) ask the person what the project is. The dialog runs in a thread: the loop keeps sampling meanwhile."""
+    now = int(time.time())
+    since = max(now - 48 * 3600, int(ASKED.read_text()) if ASKED.exists() else 0)
+    rows = con.execute("select app, title, url from samples where project = 'new_project' and ts > ?", (since,)).fetchall()
+    if len(rows) < 60 or con.execute("select status from samples order by ts desc limit 1").fetchone()[0] == "away":
+        return
+    ASKED.write_text(str(now))  # answered or not, the next question needs 60 new minutes
+    import threading
+    threading.Thread(target=lambda: add_project(ask_project_name(project_hints(rows))), daemon=True).start()
+
+
+def project_hints(rows, n=5):
+    """The most common window titles (or site + path when there's no title) among those minutes. Many have none."""
+    c = Counter()
+    for app, title, url in rows:
+        t = re.sub(r" - \d+ new items?", "", (title or "").strip())  # Slack's unread count isn't part of the name
+        if not t or t == app:
+            t = re.sub(r"^\w+://(www\.)?", "", url or "").rstrip("/")
+        if t:
+            c[t[:70]] += 1
+    return c.most_common(n)
+
+
+def ask_project_name(hints):
+    """A local dialog with a text field. Returns what was typed after "Add", else ""."""
+    text = ("Looks like you're working on a project that isn't on your list. What is it?\n\n"
+            + "".join(f"• {t} ({n} min)\n" for t, n in hints) + ("\n" if hints else "")
+            + "Type name: description, e.g.\nfc-outbound: Client: Founders Capital outbound and demand-gen engine")
+    r = subprocess.run(["osascript", "-e", "on run argv", "-e", "activate", "-e",
+                        'set r to display dialog (item 1 of argv) with title "timelens: new project" default answer "" '
+                        'buttons {"Not a project", "Add"} default button "Add" giving up after 600', "-e",
+                        'if button returned of r is "Add" then return text returned of r', "-e", "end run", text],
+                       capture_output=True, text=True)
+    return r.stdout.strip()
+
+
+def add_project(answer):
+    """'name: description' -> a [projects.known] entry in the config file and in the running tracker's CFG."""
+    name, _, desc = answer.partition(":")
+    desc = " ".join(desc.split()) or name.strip()
+    name = re.sub(r"[^a-z0-9]+", "-", name.lower()).strip("-")
+    if not name:
+        return
+    lines = CONFIG.read_text().splitlines()
+    entry = f"{json.dumps(name)} = {json.dumps(desc, ensure_ascii=False)}"  # a JSON string is a valid TOML string
+    start = next((i for i, l in enumerate(lines) if re.fullmatch(r"\s*\[\s*projects\.known\s*\]\s*(#.*)?", l)), None)
+    if start is None:
+        lines += ["", "[projects.known]", entry]
+    else:  # hand-edited files may have more tables after it: insert after its last entry
+        end = next((i for i in range(start + 1, len(lines)) if lines[i].lstrip().startswith("[")), len(lines))
+        while end > start + 1 and not lines[end - 1].strip():
+            end -= 1
+        lines.insert(end, entry)
+    text = "\n".join(lines) + "\n"
+    assert tomllib.loads(text)["projects"]["known"][name] == desc  # round-trip check before anything is replaced
+    tmp = CONFIG.with_name(CONFIG.name + ".tmp")
+    tmp.write_text(text)
+    tmp.replace(CONFIG)
+    CFG["projects"].setdefault("known", {})[name] = desc  # the next minute's request includes it, no restart
+    print(f"{datetime.now():%F %T} added project {name}", file=sys.stderr)
 
 
 # ---------- presets, demo, self-check ----------
