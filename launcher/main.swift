@@ -4,8 +4,9 @@
 // child and waits for it. It only ever runs timelens.py (next to the app) with timelens's own Python, never an
 // arbitrary command, so other programs can't borrow its screen-recording permission.
 //
-// It also posts timelens's notifications (`notify`), so they carry its name and icon. A click on one makes macOS
-// launch the app with no arguments and hand it the click; the app opens the file the notification points at.
+// It also posts timelens's notifications (`notify`), so they carry its name and icon. A click on one goes to the
+// running timelens app, which is the tracker (`run`), so that one listens for clicks and opens the file the
+// notification points at. If timelens isn't running, macOS launches the app with no arguments to handle it.
 import AppKit
 import UserNotifications
 
@@ -24,13 +25,14 @@ func fail(_ message: String, _ code: Int32) -> Never {
 }
 
 class Clicks: NSObject, UNUserNotificationCenterDelegate {
+    var quitAfter = false   // only when the app was launched just to handle a click
     func userNotificationCenter(_ center: UNUserNotificationCenter, didReceive response: UNNotificationResponse,
                                 withCompletionHandler done: @escaping () -> Void) {
         if let path = response.notification.request.content.userInfo["open"] as? String {
             NSWorkspace.shared.open(URL(fileURLWithPath: path))
         }
         done()
-        exit(0)
+        if quitAfter { exit(0) }
     }
 }
 
@@ -39,6 +41,7 @@ let clicks = Clicks()   // the center only holds its delegate weakly
 
 if args.isEmpty {   // a notification was clicked (or the app was opened from Finder: then nothing arrives)
     center.delegate = clicks   // must be set before the app finishes launching, or the click is lost
+    clicks.quitAfter = true
     DispatchQueue.main.asyncAfter(deadline: .now() + 10) { exit(0) }
     NSApplication.shared.run()   // a normal app launch (no Dock icon: LSUIElement), which is what the click is handed to
 }
@@ -88,9 +91,11 @@ for sig in [SIGTERM, SIGINT, SIGHUP] {
     sources.append(source)
 }
 
+child.terminationHandler = { exit($0.terminationStatus) }
 do { try child.run() } catch {
     FileHandle.standardError.write("couldn't start timelens: \(error)\n".data(using: .utf8)!)
     exit(70)
 }
-child.waitUntilExit()
-exit(child.terminationStatus)
+// while the tracker runs, this is the running timelens app: clicks on its notifications arrive here
+center.delegate = clicks
+NSApplication.shared.run()

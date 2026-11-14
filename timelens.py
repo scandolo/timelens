@@ -586,7 +586,7 @@ def nudge(con):
     else:
         return
     nudged = end
-    banner(title, body)
+    banner(title, body, report(date.today(), con)[0])  # a click opens today's report
 
 
 def switch_rate(con, a, b):
@@ -794,7 +794,7 @@ def reward(con):
     fresh = {k: v for k, v in news(history(con, today), day_stats(con, today)).items() if k not in seen}
     if fresh:
         CELEBRATED.write_text(" ".join([str(today), *seen, *fresh]))
-        banner("timelens: nice focus", "\n".join(fresh.values()))
+        banner("timelens: nice focus", "\n".join(fresh.values()), report(today, con)[0])
 
 
 def rewards_line(con, d):
